@@ -1,0 +1,10 @@
+prefix=/usr
+exec_prefix=/usr
+libdir=/usr/lib64
+includedir=/usr/include
+
+Name: libadq
+Description: ADQAPI for communicating with ADQ devices
+Version: 0.40117
+Libs: -L${libdir} -ladq
+Cflags: -I${includedir}

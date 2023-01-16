@@ -1,0 +1,9 @@
+CC = gcc
+CFLAGS = -fPIC -g -Wall -fmessage-length=0 -DLINUX
+
+PLATFORM = x86_64
+OBJ_DIR = objs.x86_64_noadq14
+LIB_NAME = libngpd_noadq14
+MAKE_SHARED = 1 
+
+include makefile.mk

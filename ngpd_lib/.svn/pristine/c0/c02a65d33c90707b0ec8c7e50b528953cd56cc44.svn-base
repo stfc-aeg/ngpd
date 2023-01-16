@@ -1,0 +1,66 @@
+TARGET = ngzmptest
+
+PLATFORM = arm64
+CROSS_COMPILE =  aarch64-linux-gnu-
+
+CC = $(CROSS_COMPILE)gcc
+CFLAGS = -O3 -g -Wall -fmessage-length=0
+
+VAR =  $(shell $(CXX) -dumpmachine)
+
+OBJ_DIR= objs.$(PLATFORM)
+OBJS =	$(OBJ_DIR)/ngzmptest.o $(OBJ_DIR)/ngzmp_args.o $(OBJ_DIR)/hist_reg_test.o $(OBJ_DIR)/hist_clear.o  $(OBJ_DIR)/hist_hist.o $(OBJ_DIR)/reg_test.o $(OBJ_DIR)/bram_test.o $(OBJ_DIR)/ngzmp_hardware_conf.o \
+		$(OBJ_DIR)/ngzmp_dma.o $(OBJ_DIR)/dma_test.o $(OBJ_DIR)/spi_reg_test.o $(OBJ_DIR)/i2c_tests.o $(OBJ_DIR)/adc_prbs_dmatest.o $(OBJ_DIR)/ams_xadc.o
+
+INCLUDES =  ngzmptest.h
+
+INCLUDE_DIRS = -I../include  -I../../include -I../../../../libs/include
+CFLAGS += $(INCLUDE_DIRS)
+
+LIBDIRS = -L../lib/objs.$(PLATFORM) 
+LIBDIRS += -L../../../../libs/libs.linux.$(PLATFORM)/lib
+LIBS = -lngzmp -lsmbus -ltutils -lrt -lm
+LIBDEP = ../lib/objs.$(PLATFORM)/libngzmp.a
+LFLAGS =  $(LIBDIRS) $(LIBS)
+
+BIN_DIR= ../../../../bin.$(PLATFORM)
+
+all: $(BIN_DIR)/$(TARGET)
+
+
+$(BIN_DIR)/$(TARGET): $(OBJS) $(LIBDEP)
+	$(CC) $(OBJS)  -o $(BIN_DIR)/$(TARGET) $(LFLAGS)
+
+clean:
+	rm -f $(OBJS) $(TARGET)
+
+threads: threads.o
+	$(CC) threads.o -o $(BIN_DIR)/threads $(LFLAGS)
+
+#------------------------------------------------------------------------------
+#--  rule: ./*.c
+#------------------------------------------------------------------------------
+$(OBJ_DIR)/%.o: %.c $(INCLUDES)
+	@echo "Compiling $< ..."
+	$(CC) $(CFLAGS) -c $< -o $@
+
+
+$(OBJ_DIR)/speed_test.o: ../../test/speed_test.c $(INCLUDES)
+	@echo "Compiling $< ..."
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/xsp4_spi.o: ../../test/xsp4_spi.c $(INCLUDES)
+	@echo "Compiling $< ..."
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/sys_mon.o: ../../test/sys_mon.c $(INCLUDES)
+	@echo "Compiling $< ..."
+	$(CC) $(CFLAGS) -c $< -o $@
+
+#$(OBJ_DIR)/bram_test.o: ../../test/bram_test.c $(INCLUDES)
+#	@echo "Compiling $< ..."
+#	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/readout_mode.o: ../../test/readout_mode.c $(INCLUDES)
+	@echo "Compiling $< ..."
+	$(CC) $(CFLAGS) -c $< -o $@

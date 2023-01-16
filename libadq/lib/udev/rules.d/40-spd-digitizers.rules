@@ -1,0 +1,7 @@
+# PCIe unit rules:
+# This rule will give users in the "adq" group access to Signal Processing Devices PCIe devices.
+KERNEL=="adq_pcie_*", MODE="0660", GROUP="adq"
+
+# USB unit rules:
+# This rule will give users in the "adq" group access to Signal Processing Devices USB devices.
+SUBSYSTEM=="usb", ATTR{idVendor}=="1d73", MODE="0660", GROUP="adq", SYMLINK+="adq_usb_%n"

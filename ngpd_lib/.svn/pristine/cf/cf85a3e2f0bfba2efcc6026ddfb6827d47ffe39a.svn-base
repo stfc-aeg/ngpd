@@ -1,0 +1,2 @@
+from  pyngpd import ffi, lib
+path= lib.ngpd_config_ngzmp(1, ffi.NULL, -1, ffi.NULL, -1, 2, 0, 1, 255)

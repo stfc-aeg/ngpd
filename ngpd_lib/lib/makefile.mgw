@@ -1,0 +1,8 @@
+CC		= gcc
+CFLAGS	= -g -O3  -D__LINUX__ -I../include -I../../../libs/include -m32 -mms-bitfields
+PLATFORM = mgw
+OBJ_DIR	= objs.mgw
+SERVLIBDIR  = ../linux_libs.mgw
+LIB_DIR = ../../../libs/libs.mgw/lib
+LIB_NAME = libngpd_noadq14
+include makefile.mk

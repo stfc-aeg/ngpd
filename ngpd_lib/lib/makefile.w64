@@ -1,0 +1,62 @@
+
+CC = cl
+CFLAGS	= -O2  -D__LINUX__ -I../../../pthread-win32/pthreads-w32-2-9-1-release -I../include -I../../../libs/include
+PLATFORM = w64
+OBJ_DIR	= objs.w64
+SERVLIBDIR  = ../linux_libs.w64
+LIB_DIR = ..\..\..\libs\libs.w64\lib
+LIB_NAME = ngpd_noadq14
+
+
+INCLUDES =  ../include/$(TARGET).h
+!IFDEF NGPD_CONF_ADQ14
+CFLAGS = $(CFLAGS)  -DNGPD_CONF_ADQ14=1
+!ELSE
+CFLAGS = $(CFLAGS) -DNGPD_CONF_ADQ14=0
+!ENDIF
+
+TARGET = ngpd
+
+OBJS =	$(OBJ_DIR)/ngpd_adq14.o $(OBJ_DIR)/ngpd_adq14_regs.o  $(OBJ_DIR)/ngpd_adq14_dma.o $(OBJ_DIR)/ngpd_scope_mode.o $(OBJ_DIR)/ngpd_adq14_scope_regs.o
+OBJS = $(OBJS) $(OBJ_DIR)/ngpd_playback.o  $(OBJ_DIR)/ngpd_filter.o $(OBJ_DIR)/ngpd_histogram.o  $(OBJ_DIR)/ngpd_adq14_adc.o $(OBJ_DIR)/zynqmp_api.o $(OBJ_DIR)/ngpd_zynqmp.o  $(OBJ_DIR)/ngzmp_hardware_conf.o
+OBJS = $(OBJS) $(OBJ_DIR)/ngzmp_spi.o $(OBJ_DIR)/ngzmp_dma.o $(OBJ_DIR)/ngzmp_hist.o $(OBJ_DIR)/ngzmp_i2c.o $(OBJ_DIR)/ngzmp_clock.o $(OBJ_DIR)/ngzmp_adc.o $(OBJ_DIR)/ngzmp_ams.o
+INCLUDE_DIRS =	-I../include  -I../../../libs/include 
+CFLAGS = $(CFLAGS) $(INCLUDE_DIRS)
+
+LIB = $(OBJ_DIR)\$(LIB_NAME).lib
+
+$(LIB): $(OBJS)
+!IFDEF MAKE_SHARED
+	gcc -shared -o $(OBJ_DIR)/$(LIB_NAME).so.1.0.0 -fPIC -Wl,-soname,$(LIB_NAME).so.1.0 $(OBJS)
+!ENDIF
+	link /lib /out:$(OBJ_DIR)/$(LIB_NAME).lib $(OBJS)
+
+all: $(LIB)
+	
+install: $(LIB)
+	copy ..\include\ngpd.h  ..\..\..\libs\include
+	copy ..\include\ngzmp.h  ..\..\..\libs\include
+	copy ..\include\ngzmp_dma_protocol.h  ..\..\..\libs\include
+	copy ..\include\axi_hist.h  ..\..\..\libs\include
+	copy $(LIB) $(LIB_DIR)
+!IFDEF MAKE_SHARED
+	cp $(OBJ_DIR)/libngpd.so.1.0.0 $(LIB_DIR)
+	(cd $(LIB_DIR); rm -f libngpd.so.1.0; rm -f libngpd.so)
+	(cd $(LIB_DIR); ln -s libngpd.so.1.0.0  libngpd.so.1.0; ln -s libngpd.so.1.0 libngpd.so)
+!ENDIF
+
+clean:
+	rm -f $(OBJS) $(LIB) $(OBJ_DIR)/libngpd.dll
+
+
+$(OBJ_DIR)/zynqmp_api.o: ../libzynqmp/zynqmp_api.c $(INCLUDES)
+	@echo "Compiling $< ..."
+	$(CC) $(CFLAGS) -Fo$@ ../libzynqmp/zynqmp_api.c
+
+#------------------------------------------------------------------------------
+#--  rule: ./*.c
+#------------------------------------------------------------------------------
+.c{$(OBJ_DIR)}.o: 
+	@echo "Compiling $< ..."
+	$(CC) $(CFLAGS) -Fo$@ -c $<
+		

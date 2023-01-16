@@ -1,0 +1,7 @@
+CC		= gcc
+CFLAGS	= -g -O3  -D__LINUX__ -I../include -I../../../libs/include -m32 -mms-bitfields
+TARGET = mgw
+OBJ_DIR	= objs.mgw
+SERVLIBDIR  = ../linux_libs.mgw
+LIB_DIR = ../../../libs/libs.mgw/lib
+include makefile.mk
