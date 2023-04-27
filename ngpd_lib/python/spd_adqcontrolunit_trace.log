@@ -1,7 +1,0 @@
----------------------------------------------------------------------
-Log and error trace for ADQControlUnit
-API Revision : 40117
----------------------------------------------------------------------
-INFO : (ListDevices:303) : ListDevices found 0 QPCIE devices.
-INFO : (ListDevices:449) : ListDevices found 6 USB devices.
-INFO : (ListDevices:686) : ListDevices found 6 USB devices.
