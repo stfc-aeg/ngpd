@@ -23,8 +23,6 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - run:  npm ci
       - run:  CI=false npm run build
-      - run:  ls -al
-      - run: ls -al build
       - name: Save Build Artifact
         uses: actions/upload-artifact@v3
         with:
@@ -45,8 +43,6 @@ jobs:
         with:
           name: react_build
           path: build
-      - name: Display Directory
-        run: ls -R
       - name: Zip Build
         uses: thedoctor0/zip-release@0.7.1
         with:
