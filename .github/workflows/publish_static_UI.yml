@@ -23,11 +23,14 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - run:  npm ci
       - run:  CI=false npm run build
+      - run:  ls -al
+      - run: ls -al build
       - name: Save Build Artifact
         uses: actions/upload-artifact@v3
         with:
           name: react_build
           path: build
+          if-no-files-found: error
 
   release:
     runs-on: ubuntu-latest
