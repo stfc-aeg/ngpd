@@ -49,14 +49,14 @@ const App = () => {
     changeDataPoints(+event.target.value);
   }
 
-  const raw_data = useMemo(() => [{label: "Raw Scope Data",
+  const raw_data =  [{label: "Raw Scope Data",
                     x: dataEndpoint.data?.raw_data ? Array.from(dataEndpoint.data.raw_data, (_, i) => i): [0, 1],
                     y: dataEndpoint.data ? dataEndpoint.data.raw_data : [0, 1]
-                   }], [dataEndpoint.data]);
+                   }];
 
-  const test_data = [{label: "Test",
-                     x: ngpdEndpoint.data?.data ? Array.from(ngpdEndpoint.data.data.raw_data, (_, i) => i) : [0],
-                     y: ngpdEndpoint.data?.data ? ngpdEndpoint.data.data.raw_data : [0]}]
+  // const test_data = [{label: "Test",
+  //                    x: ngpdEndpoint.data?.data ? Array.from(ngpdEndpoint.data.data.raw_data, (_, i) => i) : [0],
+  //                    y: ngpdEndpoint.data?.data ? ngpdEndpoint.data.data.raw_data : [0]}]
 
   return (
     <OdinApp title="Neutron Gamma Pulse Discriminator"
@@ -261,8 +261,8 @@ const App = () => {
         </Col>
         <Col md="9">
           <TitleCard title="Scope Data">
-            {/* <ScopeCanvas data={raw_data} isTimeBased={false} /> */}
-            <ScopeCanvas data={test_data} isTimeBased={false} />
+            <ScopeCanvas data={raw_data} isTimeBased={false} />
+            {/* <ScopeCanvas data={test_data} isTimeBased={false} /> */}
           </TitleCard>
         </Col>
         </Row>
