@@ -29,7 +29,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: react_build
-          path: /control/test/static/ngpd-react/build
+          path: ./control/test/static/ngpd-react/build
           if-no-files-found: error
 
   release:
