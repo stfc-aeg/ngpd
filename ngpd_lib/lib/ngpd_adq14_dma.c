@@ -954,6 +954,7 @@ int ngpd_dma_read_scope_chunk(int path, int card, u_int32_t scope_start, u_int32
 			if (ADQ_GetStreamOverflow(NGPDPath[path].adq_cu, NGPDPath[path].adq_num))
 			{
 				printf("ERROR: Streaming Overflow at samples_to_collect=%d, samples_in_buffer=%d, buffers_filled=%d !\n", samples_to_collect, samples_in_buffer, buffers_filled);
+				snprintf(ngpd_error_message, NGPD_MAX_ERROR_MESSAGE, "ERROR: Streaming Overflow");
 				ADQ_StopStreaming(NGPDPath[path].adq_cu, NGPDPath[path].adq_num);
 				dpc &= ~NGPD_DP_RUN_SCOPE_OUTPUT;
 				ngpd_write_glob_regs(path, card, NGPD_DATA_PATH, 1, &dpc);

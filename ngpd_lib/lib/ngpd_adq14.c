@@ -87,13 +87,13 @@ int ngpd_config_adq14(unsigned int adq_num, int debug)
 		fw_rev = ADQ_GetRevision(NGPDPath[path].adq_cu, NGPDPath[path].adq_num);
 		serial_number = ADQ_GetBoardSerialNumber(NGPDPath[path].adq_cu, NGPDPath[path].adq_num);
 		product_name = ADQ_GetBoardProductName(NGPDPath[path].adq_cu, NGPDPath[path].adq_num);
-		printf("\nAPI revision:        %d\n", api_rev);
-		printf("Firmware revision pointer=%p\n", fw_rev);
+		// printf("\nAPI revision:        %d\n", api_rev);
+		// printf("Firmware revision pointer=%p\n", fw_rev);
 		if (fw_rev != NULL)
-			printf("Firmware revision:   %d\n", fw_rev[0]);
-		printf("Board serial number: %s\n", serial_number);
+			// printf("Firmware revision:   %d\n", fw_rev[0]);
+		// printf("Board serial number: %s\n", serial_number);
 		if (product_name != NULL)
-			printf("Board product name:  %s\n", product_name);
+			// printf("Board product name:  %s\n", product_name);
 		NGPDPath[path].valid = 1;
 		NGPDPath[path].scope_mod = ngpd_scope_mod_create("ngpd_scope0", 1, NGPD_SCOPE_NBYTES_PER_CARD, &(NGPDPath[path].scope_head), NGPD_SCOPE_LAYOUT_4); 
 		if (NGPDPath[path].scope_mod == NULL)

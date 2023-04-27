@@ -19,12 +19,13 @@ class Struct():
 
     def set(self, name, value):
         # self.c_object.attr = value
-        # print("Setting {} as {}".format(name, value))
+        print("Setting {} as {}".format(name, value))
         setattr(self.c_object, name, value)
 
     def __repr__(self) -> str:
         return self.get_struct_contents_string(self.c_object)
     
+
     def get_struct_contents_string(self, struct):
         type = ffi.typeof(struct)
         return_string = self.struct_name + "\n"
@@ -66,6 +67,7 @@ class NGPD():
 
 
         self.set_scope_options(0, 0, set_streams=1)
+        self.set_scope_streams(0, 0, 0, 0, source_type="inp")
 
 
     def generate_filter(self, path=0, chan=0, type="exp", **kwargs):
@@ -183,7 +185,19 @@ class NGPD():
         if lib.ngpd_set_scope_options(path, card, options.c_object) < 0:
             self.get_error_message()
 
-        return self.resize_read_handle(path)
+        # return self.resize_read_handle(path)
+    
+    def set_scope_streams(self, path, card, stream, channel, source_type="inp"):
+
+        generation = 0
+        alt = 0
+        # module = Struct("NGPDScopeModule")
+        src_list = ["test-pat", "inp", "filter", "dtrig-diff", "dtrig-out", "bsub-out", "bsub-int", "meas-data"] #TODO: more options are available
+        if source_type in src_list:
+            src = src_list.index(source_type)
+        if lib.ngpd_scope_setup_stream(path, card, stream, channel, src, alt) < 0:
+            self.get_error_message()
+    
         
     def resize_read_handle(self, path):
 
@@ -282,6 +296,7 @@ class NGPD():
 api = NGPD()
 api.setup(adq_num=1, debug=True)
 #dx = 535822336
+print(api.read_scope_data(0, 0, 0, 0, 100, 1, 1))
 api.start_scope(0, -1.0, "read")
 print(api.read_scope_data(0, 0, 0, 0, 100, 1, 1))
 

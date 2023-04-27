@@ -24,7 +24,7 @@ INC_DIR ?= $(INSTALL_DIR)/include
 OBJS =	$(OBJ_DIR)/ngpd_adq14.o $(OBJ_DIR)/ngpd_adq14_regs.o  $(OBJ_DIR)/ngpd_adq14_dma.o $(OBJ_DIR)/ngpd_scope_mode.o $(OBJ_DIR)/ngpd_adq14_scope_regs.o
 OBJS += $(OBJ_DIR)/ngpd_playback.o  $(OBJ_DIR)/ngpd_filter.o $(OBJ_DIR)/ngpd_histogram.o  $(OBJ_DIR)/ngpd_adq14_adc.o $(OBJ_DIR)/zynqmp_api.o $(OBJ_DIR)/ngpd_zynqmp.o  $(OBJ_DIR)/ngzmp_hardware_conf.o
 OBJS +=  $(OBJ_DIR)/ngzmp_spi.o $(OBJ_DIR)/ngzmp_dma.o $(OBJ_DIR)/ngzmp_hist.o $(OBJ_DIR)/ngzmp_i2c.o $(OBJ_DIR)/ngzmp_clock.o $(OBJ_DIR)/ngzmp_adc.o $(OBJ_DIR)/ngzmp_ams.o
-OBJS += $(OBJ_DIR)/ngpd_dummy.o
+OBJS += $(OBJ_DIR)/ngpd_dummy.o $(OBJ_DIR)/ngpd_python_hooks.o
 
 INCLUDE_DIRS =	-I../include  -I$(INC_DIR) -I../../libadq/include -I../../det_sw_include
 CFLAGS += $(INCLUDE_DIRS)
@@ -57,6 +57,7 @@ install: $(LIB)
 	install -p $(LIB) $(LIB_DIR)
 ifdef MAKE_SHARED
 #	cp ${OBJ_DIR}/libngpd.so.1.0.0 $(LIB_DIR)
+	@echo "MAKE SHARED"
 	install -p ${OBJ_DIR}/libngpd.so.1.0.0 $(LIB_DIR)
 	(cd $(LIB_DIR); rm -f libngpd.so.1.0; rm -f libngpd.so)
 	(cd $(LIB_DIR); ln -s libngpd.so.1.0.0  libngpd.so.1.0; ln -s libngpd.so.1.0 libngpd.so)

@@ -1,0 +1,1 @@
+odin @ git+https://github.com/odin-detector/odin-control@1.3.0#egg=odin',

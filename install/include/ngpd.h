@@ -756,5 +756,8 @@ typedef struct _ngpd_saved_config{
 
 extern NGPDSavedConfig ngpd_saved_config[NGPD_MAX_CONFIGS];
 
+//python hooks hacked in
+int py_GetStreamOverflow();
+
 #endif /* NGPD_H_ */
 
