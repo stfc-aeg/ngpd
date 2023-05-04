@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 import 'odin-react/dist/index.css'
 
@@ -37,8 +37,10 @@ const App = () => {
   const base_sub_data = ngpdEndpoint.data?.base_sub ? ngpdEndpoint.data.base_sub : {settings: {}};
   const measure_data = ngpdEndpoint.data?.measure ? ngpdEndpoint.data.measure.settings : {};
   const adc_data = ngpdEndpoint.data?.adc ? ngpdEndpoint.data.adc : {};
+  const scope_options_data = ngpdEndpoint.data?.scope_options || {};
 
   const base_sub_type = ngpdEndpoint.data?.base_sub ? base_sub_data.div_cont_options[base_sub_data.settings.div_cont] : "Unknown";
+  const scope_src = ngpdEndpoint.data?.scope_options ? ngpdEndpoint.data.scope_src_options[scope_options_data.scope_src] : "Unknown";
 
   const stack_gap = 2
 
@@ -48,15 +50,12 @@ const App = () => {
     console.log(event)
     changeDataPoints(+event.target.value);
   }
+  
 
-  const raw_data =  [{label: "Raw Scope Data",
-                    x: dataEndpoint.data?.raw_data ? Array.from(dataEndpoint.data.raw_data, (_, i) => i): [0, 1],
-                    y: dataEndpoint.data ? dataEndpoint.data.raw_data : [0, 1]
-                   }];
-
-  // const test_data = [{label: "Test",
-  //                    x: ngpdEndpoint.data?.data ? Array.from(ngpdEndpoint.data.data.raw_data, (_, i) => i) : [0],
-  //                    y: ngpdEndpoint.data?.data ? ngpdEndpoint.data.data.raw_data : [0]}]
+  const raw_data =  useMemo(() => [{label: "Raw Scope Data",
+                    x: dataEndpoint.data?.data ? Array.from(dataEndpoint.data.data.raw_data, (_, i) => i): [0,1],
+                    y: dataEndpoint.data?.data ? dataEndpoint.data.data.raw_data: [0,1]
+                   }], [dataEndpoint.data]);
 
   return (
     <OdinApp title="Neutron Gamma Pulse Discriminator"
@@ -72,11 +71,11 @@ const App = () => {
             <Stack direction='horizontal' gap={stack_gap}>
               <InputGroup>
                 <InputGroup.Text>Path</InputGroup.Text>
-                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="setup/path" value={setup_data.path || 0} readOnly disabled></EndpointInput>
+                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="setup/path" readOnly disabled></EndpointInput>
               </InputGroup>
               <InputGroup>
                 <InputGroup.Text>Channel</InputGroup.Text>
-                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="setup/channel" value={setup_data.channel || 0} readOnly disabled></EndpointInput>
+                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="setup/channel" readOnly disabled></EndpointInput>
               </InputGroup>
             </Stack>
               <EndpointButton endpoint={ngpdEndpoint} event_type="click" fullpath="setup/setup_adq" value={true}>Setup ADQ</EndpointButton>
@@ -87,27 +86,28 @@ const App = () => {
       <TitleCard title="Filter">
         <Stack gap={stack_gap}>
           <Col>
-            <EndpointDropdown endpoint={ngpdEndpoint} event_type="select" fullpath="filter/type" buttonText={filter_data.type}>
+            
+          </Col>
+          {/* </Stack> */}
+        <Stack direction="horizontal" gap={stack_gap}>
+          <EndpointDropdown endpoint={ngpdEndpoint} event_type="select" fullpath="filter/type" buttonText={filter_data.type}>
               {filter_data.type_options ? filter_data.type_options.map(
                 (selected_type) => (
                   <Dropdown.Item eventKey={selected_type} key={selected_type} active={filter_data.type === selected_type}>{selected_type}</Dropdown.Item>
                 )) : <></>
               }
-            </EndpointDropdown>
-          </Col>
-          {/* </Stack> */}
-        <Stack direction="horizontal" gap={stack_gap}>
+          </EndpointDropdown>
           <InputGroup>
             <InputGroup.Text>T Samples</InputGroup.Text>
-            <EndpointInput endpoint={ngpdEndpoint} fullpath="filter/tsamples" value={filter_data.tsamples || 0} disabled={!(filter_data.type==="exp")} />
+            <EndpointInput endpoint={ngpdEndpoint} fullpath="filter/tsamples" disabled={!(filter_data.type==="exp")} />
           </InputGroup>
           <InputGroup>
             <InputGroup.Text>Num Average</InputGroup.Text>
-            <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="filter/num_ave" value={filter_data.num_ave || 0} disabled={!(filter_data.type==="ave")}/>
+            <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="filter/num_ave" disabled={!(filter_data.type==="ave")}/>
           </InputGroup>
           <InputGroup>
             <InputGroup.Text>Sigma</InputGroup.Text>
-            <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="filter/sigma" value={filter_data.sigma || 0} disabled={!(filter_data.type==="gaussian")}/>
+            <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="filter/sigma" disabled={!(filter_data.type==="gaussian")}/>
           </InputGroup>
         </Stack>
         <EndpointButton endpoint={ngpdEndpoint} event_type="click" fullpath="filter/setup_filter" value={true}>Set Filter</EndpointButton>
@@ -122,7 +122,7 @@ const App = () => {
                 <Stack direction="horizontal" gap={stack_gap}>
                   <InputGroup>
                     <InputGroup.Text>Threshold</InputGroup.Text>
-                    <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="trigger/settings/thres" defaultValue={trigger_data.thres || 0} />
+                    <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="trigger/settings/thres" />
                   </InputGroup>
                 </Stack>
                 <EndpointButton endpoint={ngpdEndpoint} event_type="click" fullpath="trigger/setup_trigger" value={true} >Set Trigger</EndpointButton>
@@ -141,7 +141,7 @@ const App = () => {
                 <Col>
                 <InputGroup>
                   <InputGroup.Text>Fixed Value</InputGroup.Text>
-                  <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="base_sub/settings/fixed" value={base_sub_data.settings.fixed || 0}/>
+                  <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="base_sub/settings/fixed" />
                 </InputGroup>
                 </Col>
               </Stack>
@@ -154,7 +154,7 @@ const App = () => {
               </EndpointDropdown>
               <InputGroup>
               <InputGroup.Text>Error Limit</InputGroup.Text>
-              <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="base_sub/settings/error_limit" value={base_sub_data.settings.error_limit || 0}/>
+              <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="base_sub/settings/error_limit" />
               </InputGroup>
               </Stack>
               <EndpointButton endpoint={ngpdEndpoint} event_type="click" fullpath="base_sub/setup_base_sub" value={true}>Set Base Subtraction</EndpointButton>
@@ -170,9 +170,9 @@ const App = () => {
               
               <InputGroup>
                 <InputGroup.Text>Tail Sum Delay (Bins)</InputGroup.Text>
-                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="measure/settings/tail_sum_delay" value={measure_data.tail_sum_delay || 0} />
+                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="measure/settings/tail_sum_delay" />
                 <InputGroup.Text>Tail Sum Number (Bins)</InputGroup.Text>
-                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="measure/settings/tail_sum_num" value={measure_data.tail_sum_num || 0} />
+                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="measure/settings/tail_sum_num" />
               </InputGroup>
                 <InputGroup>
                   <EndpointToggle endpoint={ngpdEndpoint} event_type="click" fullpath="measure/settings/ignore_fall_time"
@@ -182,7 +182,7 @@ const App = () => {
                 </InputGroup>
                 <InputGroup>
                   <InputGroup.Text>Fall Time Fraction</InputGroup.Text>
-                    <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="measure/settings/fall_time_frac" value={measure_data.fall_time_frac || 0} />
+                    <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="measure/settings/fall_time_frac" />
                   </InputGroup>
                   <EndpointButton endpoint={ngpdEndpoint} event_type="click" fullpath="measure/setup_measure" value={true}>Set Pulse Measurement</EndpointButton>
             </Stack>
@@ -193,21 +193,21 @@ const App = () => {
             <Stack gap={stack_gap}>
             <InputGroup>
                 <InputGroup.Text>Minimum Height</InputGroup.Text>
-                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="measure/settings/min_height" value={measure_data.min_height || 0} />
+                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="measure/settings/min_height" />
                 <InputGroup.Text>Maximum Height</InputGroup.Text>
-                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="measure/settings/max_height" value={measure_data.max_height || 0} />
+                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="measure/settings/max_height" />
             </InputGroup>
             <InputGroup>
                 <InputGroup.Text>Minimum Fall Time</InputGroup.Text>
-                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="measure/settings/min_fall_time" value={measure_data.min_fall_time || 0} />
+                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="measure/settings/min_fall_time" />
                 <InputGroup.Text>Maximum Fall Time</InputGroup.Text>
-                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="measure/settings/max_fall_time" value={measure_data.max_fall_time || 0} />
+                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="measure/settings/max_fall_time" />
             </InputGroup>
             <InputGroup>
                 <InputGroup.Text>Neutron Tail Sum Minimum (thres c)</InputGroup.Text>
-                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="measure/settings/tail_thres_c/all" value={measure_data.tail_thres_c?.all || 0} />
+                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="measure/settings/tail_thres_c/all" />
                 <InputGroup.Text>Neutron </InputGroup.Text>
-                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="measure/settings/tail_thres_m/all" value={measure_data.tail_thres_m?.all || 0} />
+                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="measure/settings/tail_thres_m/all" />
             </InputGroup>
             <EndpointButton endpoint={ngpdEndpoint} event_type="click" fullpath="measure/setup_measure" value={true}>Set Pulse Discrimination</EndpointButton>
             </Stack>
@@ -220,13 +220,27 @@ const App = () => {
             <Stack gap={stack_gap}>
               <InputGroup>
                 <InputGroup.Text>ADC Range</InputGroup.Text>
-                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="adc/range" value={adc_data.range} />
+                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="adc/range" />
                 <InputGroup.Text>ADC Offset</InputGroup.Text>
-                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="adc/offset" value={adc_data.offset} />
+                <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="adc/offset" />
               </InputGroup>
               <EndpointButton endpoint={ngpdEndpoint} event_type="click" fullpath="adc/setup_adc" value={true}>Setup ADC</EndpointButton>
             </Stack>
           </TitleCard>
+        </Col>
+        <Col>
+        <TitleCard title="Scope Setup">
+          <Stack gap={stack_gap}>
+          <EndpointDropdown endpoint={ngpdEndpoint} event_type="select" fullpath="scope_options/scope_src"
+                              buttonText={scope_src}>
+            {ngpdEndpoint.data.scope_src_options ? ngpdEndpoint.data.scope_src_options.map(
+                  (scope_option, index) => (
+                    <Dropdown.Item eventKey={index} key={scope_option} active={ngpdEndpoint.data?.scope_options.scope_src === index}>{scope_option}</Dropdown.Item>
+                  )) : <></>}
+          </EndpointDropdown>
+          <EndpointButton endpoint={ngpdEndpoint} event_type="click" fullpath="scope_options/setup_scope_streams" value={true}>Setup Scope Streams</EndpointButton>
+          </Stack>
+        </TitleCard>
         </Col>
       </Row>
       </Container>
@@ -245,7 +259,7 @@ const App = () => {
               <EndpointInput endpoint={ngpdEndpoint} type="number" fullpath="scope_options/itfg/cycles" />
             </InputGroup>
             
-            <EndpointButton endpoint={ngpdEndpoint} event_type="click" fullpath="scope_options/start_scope">
+            <EndpointButton endpoint={ngpdEndpoint} event_type="click" fullpath="scope_options/start_scope" value={true}>
               Start Scope
             </EndpointButton>
               <InputGroup>
@@ -256,6 +270,7 @@ const App = () => {
             <EndpointButton endpoint={ngpdEndpoint} event_type="click" fullpath="data/refresh_data" value={data_points}>
               Refresh
             </EndpointButton>
+            
           </Stack>
         </TitleCard>
         </Col>

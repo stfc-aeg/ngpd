@@ -9,6 +9,9 @@ from pyngpd_cffi import ffi, lib
 from functools import partial
 
 from ngpd.ngpd import NGPD, Struct, NGPDDefaults, NGPDException
+
+import logging
+
 # from ngpd.ngpd_adapter import NGPDDefaults
 
 class ngpdAdapter(ApiAdapter): 
@@ -196,4 +199,5 @@ class ngpdAdapter(ApiAdapter):
         return self.data
     
     def _set_raw_data(self, points):
+        logging.debug("Num Points: %d", points )
         self.data = self.ngpd.read_scope_data(self.path, 0, 0, 0, points, 1, 1)
