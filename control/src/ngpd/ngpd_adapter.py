@@ -12,6 +12,9 @@ from ngpd.ngpd import NGPD, Struct, NGPDDefaults, NGPDException
 
 import logging
 
+import h5py
+import numpy as np
+
 # from ngpd.ngpd_adapter import NGPDDefaults
 
 class ngpdAdapter(ApiAdapter): 
@@ -110,7 +113,8 @@ class ngpdAdapter(ApiAdapter):
             "data": {
                 "raw_data": (self._get_raw_data, None),
                 "num_points": (len(self.data), None),
-                "refresh_data": (None, self._set_raw_data)
+                "refresh_data": (None, self._set_raw_data),
+                "save_data": (None, self._save_raw_data)
             }
 
         })
@@ -196,8 +200,26 @@ class ngpdAdapter(ApiAdapter):
         self.ngpd.start_scope(self.path, self.itfg, self.scope_update_flags, self.scope_read_flag)
 
     def _get_raw_data(self):
-        return self.data
+        return self.data[0:100]
     
     def _set_raw_data(self, points):
         logging.debug("Num Points: %d", points )
         self.data = self.ngpd.read_scope_data(self.path, 0, 0, 0, points, 1, 1)
+
+    def _save_raw_data(self, filename):
+        logging.debug("Saving Data to File: %s", filename)
+
+        if not filename.endswith(".h5"):
+            filename.append(".h5")
+        with h5py.File(filename, "w") as f:
+            dset = f.create_dataset("Data", (len(self.data),), data=self.data)
+        # try:
+
+        #     with open(filename, "xb") as f:
+        #         [f.write(x.to_bytes(2, 'big')) for x in self.data]
+        # except FileExistsError as err:
+        #     logging.error("File %s already exists!", filename)
+        #     return False
+        # except (ValueError, OverflowError) as err:
+        #     logging.error("Error writing to file: %s", err)
+        #     os.remove(filename)

@@ -29,7 +29,7 @@ const EndpointToggle = WithEndpoint(ToggleSwitch);
 const App = () => {
 
   const ngpdEndpoint = useAdapterEndpoint("ngpd", process.env.REACT_APP_ENDPOINT_URL);
-  const dataEndpoint = useAdapterEndpoint("ngpd/data", process.env.REACT_APP_ENDPOINT_URL, 1000);
+  const dataEndpoint = useAdapterEndpoint("ngpd/data", process.env.REACT_APP_ENDPOINT_URL);
 
   const setup_data = ngpdEndpoint.data?.setup ? ngpdEndpoint.data.setup : {};
   const filter_data = ngpdEndpoint.data?.filter ? ngpdEndpoint.data.filter : {};
@@ -45,17 +45,23 @@ const App = () => {
   const stack_gap = 2
 
   const [data_points, changeDataPoints] = useState(100);
+  const [save_file, changeSaveFile] = useState("");
+
 
   const onChangeDataPoints = (event) => {
     console.log(event)
     changeDataPoints(+event.target.value);
   }
+
+  const onChangeFileName = (event) => {
+    changeSaveFile(event.target.value);
+  }
   
 
   const raw_data =  useMemo(() => [{label: "Raw Scope Data",
-                    x: dataEndpoint.data?.data ? Array.from(dataEndpoint.data.data.raw_data, (_, i) => i): [0,1],
-                    y: dataEndpoint.data?.data ? dataEndpoint.data.data.raw_data: [0,1]
-                   }], [dataEndpoint.data]);
+                    x: ngpdEndpoint.data.data ? Array.from(ngpdEndpoint.data.data.raw_data, (_, i) => i): [0,1],
+                    y: ngpdEndpoint.data.data ? ngpdEndpoint.data.data.raw_data: [0,1]
+                   }], [ngpdEndpoint.data.data?.raw_data]);
 
   return (
     <OdinApp title="Neutron Gamma Pulse Discriminator"
@@ -233,7 +239,7 @@ const App = () => {
           <Stack gap={stack_gap}>
           <EndpointDropdown endpoint={ngpdEndpoint} event_type="select" fullpath="scope_options/scope_src"
                               buttonText={scope_src}>
-            {ngpdEndpoint.data.scope_src_options ? ngpdEndpoint.data.scope_src_options.map(
+            {ngpdEndpoint.data?.scope_src_options ? ngpdEndpoint.data.scope_src_options.map(
                   (scope_option, index) => (
                     <Dropdown.Item eventKey={index} key={scope_option} active={ngpdEndpoint.data?.scope_options.scope_src === index}>{scope_option}</Dropdown.Item>
                   )) : <></>}
@@ -262,14 +268,22 @@ const App = () => {
             <EndpointButton endpoint={ngpdEndpoint} event_type="click" fullpath="scope_options/start_scope" value={true}>
               Start Scope
             </EndpointButton>
+            <hr/>
               <InputGroup>
               <InputGroup.Text>Data Points</InputGroup.Text>
               <Form.Control defaultValue={100} type="number" onChange={onChangeDataPoints}></Form.Control>
 
             </InputGroup>
             <EndpointButton endpoint={ngpdEndpoint} event_type="click" fullpath="data/refresh_data" value={data_points}>
-              Refresh
+              Get Data
             </EndpointButton>
+            <InputGroup>
+            {/* <InputGroup.Text>Save Data:</InputGroup.Text> */}
+            <EndpointButton endpoint={ngpdEndpoint} event_type="click" fullpath="data/save_data" value={save_file}>
+              Save Data
+            </EndpointButton>
+            <Form.Control type="text" placeholder="Filename" onChange={onChangeFileName}></Form.Control>
+            </InputGroup>
             
           </Stack>
         </TitleCard>
@@ -277,7 +291,6 @@ const App = () => {
         <Col md="9">
           <TitleCard title="Scope Data">
             <ScopeCanvas data={raw_data} isTimeBased={false} />
-            {/* <ScopeCanvas data={test_data} isTimeBased={false} /> */}
           </TitleCard>
         </Col>
         </Row>
