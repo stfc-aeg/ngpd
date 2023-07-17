@@ -3,7 +3,10 @@ from pyngpd_cffi import ffi, lib
 
 from functools import partial
 
+import numpy as np
+
 import threading
+
 
 class NGPD():
 
@@ -22,11 +25,14 @@ class NGPD():
         self.filter_type = "exp"
 
         self.div_cont_options = ["div-64", "div-128", "div-256", "div-512",
-                                "div-1k", "div-2k", "div-4k", "div-8k"]
+                                 "div-1k", "div-2k", "div-4k", "div-8k"]
         self.scope_src_options = ["test-pat", "inp", "filter", "dtrig-diff", "dtrig-out", "bsub-out", "bsub-int", "meas-data"] #TODO: more options are available
         self.filter_type_options = ["exp", "ave", "gaussian"]
         
         self.revision = 0
+
+        # one second of data contains 500 million points
+        self.data = np.zeros(500000000, dtype=np.uint16)  # ha ha this is SO MUCH DATA
 
     def setup(self, adq_num, debug):
         
@@ -131,12 +137,11 @@ class NGPD():
 
         # print(module)
 
-
     def read_scope_data(self, path, sx, sy, st, dx, dy, dt):
         
         module = Struct("NGPDScopeModule")
         module.c_object = lib.ngpd_scope_get_mod(path)
-        data = []
+        # data = []
         # data_point = lib.ngpd_scope_mod_get_ptr(module.c_object, 0, 0)
         # inc = lib.ngpd_scope_mod_get_inc(module.c_object, 0)
 
@@ -146,15 +151,12 @@ class NGPD():
                 inc = lib.ngpd_scope_mod_get_inc(module.c_object, y)
                 ptr = lib.ngpd_scope_mod_get_ptr(module.c_object, t, y)
 
-                ptr += inc*sx
+                ptr += inc * sx
 
                 for i in range(0, dx):
-                    data.append(ptr[0])
+                    self.data.append(ptr[0])
                     ptr += inc
-                return data
-
-    def thread_start_scope(self, path, itfg, update_settings, read):
-        thread = threading.thread()
+        return
 
     def start_scope(self, path, itfg, update_settings, read):
         
@@ -202,6 +204,8 @@ class NGPD():
                 self.get_error_message()
         
         lib.ngpd_set_run_flags(path, save_flags)
+
+        self.read_scope_data()
 
 
 

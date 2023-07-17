@@ -56,8 +56,6 @@ class ngpdAdapter(ApiAdapter):
         self.data = []
 
 
-
-
         self.param_tree = ParameterTree({
             "error_message": (lambda: self.ngpd.error_message, None),
             "setup":{
@@ -127,7 +125,7 @@ class ngpdAdapter(ApiAdapter):
             status = 200
         except ParameterTreeError as param_error:
             response = {"response: NGPD GET Error: {}".format(param_error)}
-            content_type='application/json'
+            content_type = 'application/json'
             status = 400
         
         return ApiAdapterResponse(response, content_type=content_type, status_code=status)
@@ -203,8 +201,8 @@ class ngpdAdapter(ApiAdapter):
         return self.data[0:100]
     
     def _set_raw_data(self, points):
-        logging.debug("Num Points: %d", points )
-        self.data = self.ngpd.read_scope_data(self.path, 0, 0, 0, points, 1, 1)
+        logging.debug("Num Points: %d", points)
+        self.ngpd.read_scope_data(self.path, 0, 0, 0, points, 1, 1)
 
     def _save_raw_data(self, filename):
         logging.debug("Saving Data to File: %s", filename)
