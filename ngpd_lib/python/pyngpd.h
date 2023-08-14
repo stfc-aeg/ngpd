@@ -1,9 +1,44 @@
 #define NGPD_MEASURE_TAIL_THRES_SIZE 256 //!< Number of values to write to tail thres BRAM
 
+#define DISP_2D		1
+#define DISP_1D_XY	2
+#define DISP_1D_Y	3
+
+#define DATA_LONG	1
+#define DATA_SHORT	2
+#define DATA_FLOAT	3
+#define DATA_DOUBLE	4
+
+#define DATA_SHORT_DIG1 32
+#define DATA_SHORT_DIG2 33
+
+#define DATA_FIXED8_DIG1 40
+#define DATA_FIXED8_DIG2 41
+#define DATA_FIXED8_DIG3 42
+#define DATA_FIXED8_DIG4 43
+#define DATA_FIXED8_DIG5 44
+#define DATA_FIXED8_DIG6 45
+#define DATA_FIXED8_DIG7 46
+#define DATA_FIXED8_DIG8 47
+
+
+/* The structure contains x y and title strings */
+#define MOD_LABLEN 80
+#define MOD_TITLEN 80
+
+
+typedef void mh_com;
+typedef void mh_data;
+
+#define IMG_MOD_2D				0
+#define IMG_MOD_3D				1
+
 typedef uint8_t  u_int8_t;
 typedef uint16_t u_int16_t;
 typedef uint32_t u_int32_t;
 typedef uint64_t u_int64_t;
+
+typedef int64_t off_t;
 
 typedef void mh_com;
 
@@ -11,6 +46,28 @@ const uint32_t NGPD_RUN_FLAGS_SCOPEMODE         = (1<<4);
 const uint32_t NGPD_RUN_FLAGS_SCOPE_MOD_TO_REGS = (1<<5);
 const uint32_t NGPD_RUN_FLAGS_SCOPE_REGS_TO_MOD = (1<<6);
 const uint32_t NGPD_MEASURE_TAIL_THRES_SIZE = 256;
+
+typedef enum
+{
+	ImgModUnlinkNone=0,
+	ImgModUnlinkCreated=1,
+	ImgModUnlinkAll=2
+} ImgModUnlink;
+
+typedef enum 
+{
+	NGPDHistEnbHeight=1, 
+	NGPDHistEnbTailSum=2,
+	NGPDHistEnbFallTime=4,
+	NGPDHistEnbTailRatio=8,
+	NGPDHistEnbHgtTailSum=0x10,
+	NGPDHistEnbHgtFallTime=0x20,
+	NGPDHistEnbHgtTailRatio=0x40,
+
+	NGPDHistEnbAll=0x7F,
+	NGPDHistSeparateNeutrons=0x10000,
+	NGPDHistDiscardPileup=0x20000
+} NGPDHistEnables;
 
 typedef struct  ngpd_diff_trig_t
 {
@@ -75,6 +132,48 @@ typedef struct ngpd_scope_data_module
 	} head;
 	u_int16_t _data[1];			//!< Beginning of data, but use {@link ngpd_scope_mod_get_ptr()} for access
 }	NGPDScopeModule;
+
+typedef struct
+{
+	struct mod_header
+	{
+		int32_t data_type; 		/* data type long short etc see above 			*/
+		int32_t disp_type;		/* Prefered display technique see above			*/
+		uint32_t num_x;/* Number of elements in x direction 			*/
+		uint32_t num_y;/* Number of elements in y direction			*/
+		int32_t version;		/* incrementing version for derived images? 	*/
+							/* Get a block of data so that it can be read 	*/
+		double aspect;		/* Aspect ratio of pixels X wid / Y wid (-ve = ignore)*/
+		char x_label[MOD_LABLEN+2];
+		char y_label[MOD_LABLEN+2];
+		char z_label[MOD_LABLEN+2];
+		char title[MOD_TITLEN+2];
+	} head;
+	uint32_t data[1];
+}	MOD_IMAGE;
+
+typedef struct
+{
+	struct mod_header3d
+	{
+		int32_t data_type; 		/* data type long short etc see above 			*/
+		int32_t disp_type;		/* Prefered display technique see above			*/
+		uint32_t num_x;			/* Number of elements in x direction 			*/
+		uint32_t num_y;			/* Number of elements in y direction			*/
+		uint32_t num_t;
+		int32_t version;		/* incrementing version for derived images? 	*/
+							/* Get a block of data so that it can be read 	*/
+		double aspect;		/* Aspect ratio of pixels X wid / Y wid (-ve = ignore)*/
+		char x_label[MOD_LABLEN+2];
+		char y_label[MOD_LABLEN+2];
+		char t_label[MOD_LABLEN+2];
+		char z_label[MOD_LABLEN+2];
+		char title[MOD_TITLEN+2];
+		int labels_num, labels_size, labels_spare;		/* For Y labels, future expansion */
+		int data_offset;
+	} head;
+	int labels_offset[1];		/* First label offset if labels_size > 0 */
+}	MOD_IMAGE3D;
 
 typedef struct
 {
@@ -145,6 +244,8 @@ int ngpd_write_baseline_subtract(int path, int chan, NGPDBaseSubtract * bsub);
 int ngpd_write_measure(int path, int chan, NGPDMeasure * measure);
 int ngpd_read_measure(int path, int chan, NGPDMeasure * measure);
 
+int ngpd_hist_setup(int path, int max_height, int max_tail_sum, int max_fall_time, double ratio_scale, int nbins_height, int nbins_tail_sum, int nbins_fall_time, int nbins_ratio, NGPDHistEnables enables);
+
 double ngpd_adc_set_range(int path, int chan, double vrange);
 int ngpd_adc_set_offset(int path, int chan, int codes);
 
@@ -172,6 +273,28 @@ int ngpd_scope_mod_get_inc(NGPDScopeModule *mod, int stream) ;
 int* ADQ_GetRevision(void* adq_cu_ptr, int adq_num);
 int ADQAPI_GetRevision();
 
+//HISTOGRAMMING METHODS
+int _os_datmod (const char *name, off_t s, uint16_t *attr_rev, uint16_t *type_lang, uint32_t perm, void **mod, void **mod_head);
+int _os_link(const char **namep, void **mod_head, void **mod, uint16_t *type_lang, uint16_t *att_rev);
+int munlink(void *mod_head);
+int _os_unlink(void *mod_head);
+int munlink_linux(void *mod_head, ImgModUnlink what);
 
+MOD_IMAGE *id_mkmod (const char *name, int num_x, int num_y, const char *x_lab, const char *y_lab,  int data_type, void **mod_head);
+MOD_IMAGE3D *id_mkmod3d (const char *name, int num_x, int num_y, int num_t, const char *x_lab, const char *y_lab, const char *t_lab, char ** labels, int data_type, mh_com **mod_head);
+size_t datamod_size(void *mod);
+MOD_IMAGE *id_mkmod_err_msg (const char *name, int num_x, int num_y, const char *x_lab, const char *y_lab, int data_type, mh_com **mod_head, char *err_msg, int max_err_msg);
+MOD_IMAGE3D *id_mkmod3d_err_msg (const char *name, int num_x, int num_y, int num_t, const char *x_lab, const char *y_lab, const char *t_lab, char ** labels, int data_type, mh_com **mod_head, char *err_msg, int max_err_msg);
+
+uint32_t *id_get_ptr(void *mod, int x, int y, int t);
+int id_clear_mod(void *p);
+int id_copy_mod(void *s, void *d);
+char *id_get_label(void *p, int row);
+int id_mod_get_shape(void *m, int *num_x, int *num_y, int *num_t);
+int id_get_num_x(void *p);
+int id_get_num_y(void *p);
+int id_get_num_t(void *p);
+int id_get_data_type(void *p);
+// int _os_link2(const char *namep, void **mod_head, void **mod, uint16_t *type_lang, uint16_t *att_rev);
 
 // NGPDPathType NGPDPath[];

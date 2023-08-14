@@ -4,9 +4,11 @@
   "private": true,
   "dependencies": {
     "odin-react": "github:stfc-aeg/odin-react",
+    "plotly.js": "^2.25.0",
     "react": "^18.2.0",
     "react-bootstrap-icons": "^1.10.2",
     "react-dom": "^18.2.0",
+    "react-plotly.js": "^2.6.0",
     "react-scripts": "^5.0.1",
     "web-vitals": "^2.1.4"
   },
