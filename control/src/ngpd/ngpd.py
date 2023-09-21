@@ -5,7 +5,6 @@ from functools import partial
 
 import numpy as np
 
-import threading
 import logging
 
 class NGPD():
@@ -28,7 +27,7 @@ class NGPD():
                                  "div-1k", "div-2k", "div-4k", "div-8k"]
         self.scope_src_options = ["test-pat", "inp", "filter", "dtrig-diff", "dtrig-out", "bsub-out", "bsub-int", "meas-data"] #TODO: more options are available
         self.filter_type_options = ["exp", "ave", "gaussian"]
-        
+
         self.revision = 0
         self.mod = None
 
@@ -38,15 +37,13 @@ class NGPD():
         self.data = np.zeros(500000000, dtype=np.uint16)  # ha ha this is SO MUCH DATA
 
     def setup(self, adq_num, debug):
-        
+
         if lib.ngpd_config_adq14(adq_num, debug) < 0:
             self.get_error_message()
             self.setup_flag = False
         else:
             self.setup_flag = True
             self.mod = ScopeMod(self.path)
-            print(self.mod.mod)
-            print(self.mod.get_num_t())
 
         
 
@@ -112,7 +109,7 @@ class NGPD():
 
         max_height = 65535
         max_fall_time = 255
-
+        logging.debug("MEASURE TAIL SUM: %d", measure.get("tail_sum_num"))
         max_tail_sum = int(65536/5*measure.get("tail_sum_num"))
         ratio_scale = num_bins_tailratio/(max_ratio*measure.get("tail_sum_num"))
 
@@ -204,6 +201,7 @@ class NGPD():
 
     def read_scope_data(self, path, sx, sy, st, dx, dy, dt):
         i = 0
+        np.resize(self.data, dx) # make sure the data array is the correct size
         for t in range(st, dt):
 
             for y in range(sy, dy):

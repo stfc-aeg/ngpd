@@ -12,6 +12,8 @@ from ngpd.ngpd import NGPD, Struct, ScopeMod, ImageMod, NGPDDefaults, NGPDExcept
 
 import logging
 
+import base64
+
 import h5py
 import numpy as np
 # import cv2
@@ -40,7 +42,6 @@ class ngpdAdapter(ApiAdapter):
         self.scope_update_flags = False
         self.scope_read_flag = True
 
-
         self.filter = {}
         self.filter["type"] = self.options.get("filter_type", NGPDDefaults.filter_type)
         # self.filter['type_options'] = self.ngpd.filter_type_options
@@ -62,6 +63,9 @@ class ngpdAdapter(ApiAdapter):
         self.scope_options = Struct("NGPDScopeOptions", **NGPDDefaults.scope_options)
 
         self.data = []
+
+        self.data_downsample_scale = 1000
+        self.data_points_per_second = 535822336
 
         self.dae_stretch = 20
 
@@ -88,6 +92,7 @@ class ngpdAdapter(ApiAdapter):
             "setup": (None, self._setup_histogram),
             "hist_select": (lambda: self.selected_hist, self.set_selected_hist),
             "data": (self.get_hist_image, None),
+            "data_shape": (self.get_hist_shape, None),
             "enable": {},
             "options": {}
         }
@@ -167,9 +172,12 @@ class ngpdAdapter(ApiAdapter):
             # "stream_overflow": (self.ngpd.get_overflow, None)
             "data": {
                 "raw_data": (self._get_raw_data, None),
-                "num_points": (len(self.data), None),
+                "num_points": (len(self.ngpd.data), None),
                 "refresh_data": (None, self._set_raw_data),
-                "save_data": (None, self._save_raw_data)
+                "refresh_data_time": (None, self._set_raw_data_time),
+                "save_data": (None, self._save_raw_data),
+                "downsample": (self.data_downsample_scale, None),
+                "points_per_second": (self.data_points_per_second, None)
             }
 
         })
@@ -271,11 +279,18 @@ class ngpdAdapter(ApiAdapter):
         self.ngpd.start_scope(self.path, self.itfg, self.scope_update_flags, self.scope_read_flag)
 
     def _get_raw_data(self):
-        return self.ngpd.data[::100].tolist()
+        # encode data as b64 string, to speed up http transfer. Decode on other end
+        encoded_data = base64.b64encode(np.ascontiguousarray(self.ngpd.data[::self.data_downsample_scale]))
+        return encoded_data.decode("utf-8")
     
     def _set_raw_data(self, points):
-        logging.debug("Num Points: %d", points)
-        self.ngpd.read_scope_data(self.path, 0, 0, 0, points, 1, 1)
+        logging.debug("Num Points: %d", int(points))
+        self.ngpd.read_scope_data(self.path, 0, 0, 0, int(points), 1, 1)
+
+    def _set_raw_data_time(self, milliseconds):
+        logging.debug("Time: %d", milliseconds)
+        points = milliseconds * (self.data_points_per_second/1000)
+        self._set_raw_data(points)
 
     def _save_raw_data(self, filename):
         logging.debug("Saving Data to File: %s", filename)
@@ -328,15 +343,18 @@ class ngpdAdapter(ApiAdapter):
         try:
             hist_mod = self.ngpd.hist_mods[self.selected_hist]
             hist_mod.update_data()
-            return hist_mod.data.tolist()
-            # img_scaled = self.scale_array(hist_mod.data[:,:,0], 0, 255).astype(dtype=np.uint8)
-            # logging.debug("Scaled Image Dimensions: %s", img_scaled.shape)
-
-            # img_encode = cv2.imencode(
-            #     ".png", img_scaled, params=[cv2.IMWRITE_PNG_COMPRESSION, 0])[1]
-            # return img_encode.tostring()
+            logging.debug("HISTOGRAM DATA CONTAINS NON-ZERO: %s", np.any(hist_mod.data))
+            encoded_data = base64.b64encode(hist_mod.data)
+            return encoded_data.decode("utf-8")
+            
         except KeyError:
             logging.error("Histogram %s Not Available", self.selected_hist)
+            return None
+
+    def get_hist_shape(self):
+        try:
+            return self.ngpd.hist_mods[self.selected_hist].data.shape
+        except KeyError:
             return None
     
     @staticmethod

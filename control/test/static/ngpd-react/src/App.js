@@ -1,13 +1,14 @@
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import 'odin-react/dist/index.css'
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-import { DropdownSelector, OdinApp, ScopeCanvas, TitleCard, ToggleSwitch } from 'odin-react';
+import { DropdownSelector, OdinApp, TitleCard, ToggleSwitch, OdinGraph } from 'odin-react';
 import { WithEndpoint, useAdapterEndpoint } from 'odin-react';
 
+import {Buffer} from "buffer";
 import Row from 'react-bootstrap/Row';
 
 // import Row from 'react-bootstrap/Row';
@@ -19,10 +20,7 @@ import InputGroup from 'react-bootstrap/InputGroup';
 import Stack from 'react-bootstrap/Stack';
 import Dropdown from 'react-bootstrap/Dropdown'
 import Alert from 'react-bootstrap/Alert';
-import Accordion from 'react-bootstrap/Accordion';
 import Spinner from 'react-bootstrap/Spinner';
-
-import Plot from 'react-plotly.js';
 
 import HistogramPage from './histogram_page';
 
@@ -39,10 +37,10 @@ const App = () => {
 
   const setup_data = ngpdEndpoint.data?.setup ? ngpdEndpoint.data.setup : {};
   const filter_data = ngpdEndpoint.data?.filter ? ngpdEndpoint.data.filter : {};
-  const trigger_data = ngpdEndpoint.data?.trigger ? ngpdEndpoint.data.trigger.settings : {};
+  // const trigger_data = ngpdEndpoint.data?.trigger ? ngpdEndpoint.data.trigger.settings : {};
   const base_sub_data = ngpdEndpoint.data?.base_sub ? ngpdEndpoint.data.base_sub : {settings: {}};
   const measure_data = ngpdEndpoint.data?.measure ? ngpdEndpoint.data.measure.settings : {};
-  const adc_data = ngpdEndpoint.data?.adc ? ngpdEndpoint.data.adc : {};
+  // const adc_data = ngpdEndpoint.data?.adc ? ngpdEndpoint.data.adc : {};
   const scope_options_data = ngpdEndpoint.data?.scope_options || {};
 
   const base_sub_type = ngpdEndpoint.data?.base_sub ? base_sub_data.div_cont_options[base_sub_data.settings.div_cont] : "Unknown";
@@ -50,8 +48,10 @@ const App = () => {
 
   const stack_gap = 2
 
-  const [data_points, changeDataPoints] = useState(500000000);
+  const [data_points, changeDataPoints] = useState(1000);
   const [save_file, changeSaveFile] = useState("");
+
+  const [scope_data, changeScopeData] = useState([0, 1]);
 
   const filter_options = {"exp": "Exponential", "ave": "Average", "gaussian": "Gaussian"};
   const scope_data_options = {
@@ -87,12 +87,20 @@ const App = () => {
   }
   
 
-  const raw_data =  useMemo(() => [{type: 'scatter',
-                    x: ngpdEndpoint.data.data ? Array.from(ngpdEndpoint.data.data.raw_data, (_, i) => i): [0,1],
-                    y: ngpdEndpoint.data.data ? ngpdEndpoint.data.data.raw_data: [0,1]
-                   }], [ngpdEndpoint.data?.data?.raw_data]);
-
-  
+  useEffect(() => {
+    var decoded_data = new Uint16Array();
+    if(ngpdEndpoint.data.data?.raw_data){
+      var buffer = Uint8Array.from(Buffer.from(ngpdEndpoint.data.data?.raw_data || "AAAA", "base64"));
+      decoded_data = new Uint16Array(buffer.buffer)
+    }
+    else
+    {
+      decoded_data = [0, 1];
+    }
+    changeScopeData(decoded_data);
+    
+  }, [ngpdEndpoint.data.data?.raw_data])
+ 
 
   return (
     <OdinApp title="Neutron Gamma Pulse Discriminator"
@@ -303,7 +311,7 @@ const App = () => {
               <Col>
               <EndpointButton endpoint={ngpdEndpoint} event_type="click" fullpath="scope_options/start_scope" value={true}>
                 Start Scope
-                {ngpdEndpoint.loading == "putting" && <Spinner as="span" size="sm" animation="border" role="status"></Spinner>}
+                {ngpdEndpoint.loading === "putting" && <Spinner as="span" size="sm" animation="border" role="status"></Spinner>}
               </EndpointButton>
               
               </Col>
@@ -311,10 +319,11 @@ const App = () => {
             <hr/>
               <InputGroup>
               <InputGroup.Text>Data Points</InputGroup.Text>
-              <Form.Control defaultValue={100} type="number" onChange={onChangeDataPoints}></Form.Control>
+              <Form.Control defaultValue={data_points} type="number" onChange={onChangeDataPoints}></Form.Control>
+              <InputGroup.Text>ms</InputGroup.Text>
 
             </InputGroup>
-            <EndpointButton endpoint={ngpdEndpoint} event_type="click" fullpath="data/refresh_data" value={data_points}>
+            <EndpointButton endpoint={ngpdEndpoint} event_type="click" fullpath="data/refresh_data_time" value={data_points}>
               Get Data
             </EndpointButton>
             <InputGroup>
@@ -330,7 +339,8 @@ const App = () => {
         </Col>
         <Col md="9">
           <TitleCard title="Scope Data">
-            <Plot data={raw_data}/>
+            {/* <Plot data={raw_data} layout={{tickmode: "linear", tick0: 0, tickformat: "%S.%4f", xaxis: {title: "Time since Acquisition Start (ms)"}}}/> */}
+            <OdinGraph prop_data={scope_data} type="scatter" series_name="Scope Data" title="Scope Data"/>
           </TitleCard>
         </Col>
         </Row>

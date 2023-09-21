@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 
 import { useState, useEffect } from "react";
 
@@ -12,10 +12,8 @@ import Form from 'react-bootstrap/Form';
 import Dropdown from 'react-bootstrap/Dropdown';
 import InputGroup from 'react-bootstrap/InputGroup';
 
-
-import Plot from 'react-plotly.js';
-
-import { TitleCard, DropdownSelector, ToggleSwitch, WithEndpoint } from "odin-react";
+import { TitleCard, DropdownSelector, ToggleSwitch, WithEndpoint, OdinGraph } from "odin-react";
+import { Buffer } from "buffer";
 
 const EndpointButton = WithEndpoint(Button);
 const EndpointInput = WithEndpoint(Form.Control);
@@ -26,92 +24,130 @@ function HistogramPage(props) {
     const {ngpdEndpoint, stack_gap} = props;
 
     const [hist_data, changeHistData] = useState([{}]);
-    const [hist_layout, changeHistLayout] = useState({});
+    const [hist_type, changeHistType] = useState({});
     const [hist_dropdown_text, changeHistDropdownText] = useState("None");
-    const [updateMenu, changeUpdateMenu] = useState({});
+    const [graph_width, changeGraphWidth] = useState();
+    const [multiple_graph, setMultipleGraph] = useState(false);
 
-    const hist_select_options = {"Height": "height",
+    const hist_select_options = useMemo(() => {return {"Height": "height",
     "Tail Sum": "tail_sum",
     "Fall Time": "fall_time",
     "Tail Ratio": "tail_ratio",
     "Height X Tail Sum": "height_tail_sum",
     "Height X Fall Time": "height_fall_time",
-    "Height X Tail Ratio": "height_tail_ratio"};
+    "Height X Tail Ratio": "height_tail_ratio"}}, []);
+
+    const decode64Data = (encoded_data) => {
+      if(encoded_data)
+      {
+        console.log(encoded_data);
+        var uint8_buffer = Uint8Array.from(Buffer.from(encoded_data, "base64"));
+        return new Uint32Array(uint8_buffer.buffer);
+      }
+      else
+      {
+        return null;
+      }
+    }
+
+    const renderGraph = () => {
+      if(multiple_graph)
+      {
+        return (
+          <Row>
+            <OdinGraph prop_data={hist_data[0]} type={hist_type} title={hist_dropdown_text + ": 1"} num_x={graph_width}/>
+            <OdinGraph prop_data={hist_data[1]} type={hist_type} title={hist_dropdown_text + ": 2"} num_x={graph_width}/>
+            <OdinGraph prop_data={hist_data[2]} type={hist_type} title={hist_dropdown_text + ": 3"} num_x={graph_width}/>
+          </Row>
+        )
+      }
+      else
+      {
+        return <OdinGraph prop_data={hist_data} type={hist_type} title={hist_dropdown_text} num_x={graph_width}/>
+      }
+    }
+    useEffect(() => {
+      for(var key in hist_select_options)
+      {
+        if((ngpdEndpoint.data.histogram?.hist_select || null) === hist_select_options[key])
+        {
+          changeHistDropdownText(key);
+          break;
+        }
+      }
+    }, [ngpdEndpoint.data.histogram?.hist_select, hist_select_options])
 
     useEffect(() => {
         console.log("Changing Hist Data");
-        var data = ngpdEndpoint.data.histogram?.data || null;
+
+        var data = decode64Data(ngpdEndpoint.data.histogram?.data);
+        console.log(data);
     
         if(data == null)
         {
           console.log("no hist data available");
           return;
         }
+        var dims = ngpdEndpoint.data.histogram?.data_shape;
+        console.log(dims);
+
+        
     
-        var x_dim = data.length;
-        var y_dim = data[0].length;
-        var t_dim = data[0][0].length;
-        console.log("(" + x_dim + ", " + y_dim + ", " + t_dim + ")");
-    
-        // var type = "";
-        var hist_data = [];
-        var buttons = [];
-        if(y_dim === 1)
+        // // var type = "";
+        // var hist_data = [];
+        // var buttons = [];
+
+        var reshaped_data = [];
+        if(dims[1] === 1)
         {
-          // type = "scatter";
-          for(var i = 0; i<t_dim; i++)
+          //1d data
+          setMultipleGraph(false);
+          changeHistType("scatter");
+          if(dims[2] > 1)
           {
-            var plot_data ={
-              x: Array.from(data, (_, k) => k),
-              y: Array.from(data, (v, k) => v[0][i]),
-              type: "scatter"
+            //need to split data into the multiple datasets
+            // var reshaped_data = [];
+            for(var i = 0; i<data.length; i+=dims[0])
+            {
+              reshaped_data.push(Array.from(data.slice(i, i + dims[0])));
             }
-            hist_data.push(plot_data);
+            console.log(reshaped_data);
+            changeHistData(reshaped_data);
           }
-          changeHistLayout({yaxis: {autorange: true}, width:1, height:1});
-          changeUpdateMenu(null);
+          else
+          {
+            changeHistData(data);
+          }
+
+
         }
         else
         {
-            for(var i = 0; i<t_dim; i++)
-            {
-            var plot_data ={
-              z: Array.from(data, (x, k) => Array.from(x, (y, k) => y[i])),
-              type: "heatmap",
-              xaxis:"x",
-              yaxis: "y"
-            }
-            hist_data.push(plot_data);
-            var visible_array = new Array(t_dim).fill(false);
-            visible_array[i] = true;
-            var button = {args: [{'visible': visible_array}], method: 'update'}
-            buttons.push(button);
-          }
-          changeHistLayout({zaxis: { type: 'log', autorange: true}, width:x_dim, height:y_dim,
-                            updatemenus: 
-                            [{
-                                buttons: buttons,
-                                direction: 'left',
-                                showactive: true,
-                                type: "buttons"
-                            }]
-        });
+          //2d data
+          changeHistType("heatmap");
+          changeGraphWidth(dims[0]);
           
-          
-        }
-    
-        for(var key in hist_select_options)
-        {
-          // console.log(key + ": " + hist_select_options[key]);
-          // console.log(ngpdEndpoint.data.histogram?.hist_select);
-          if((ngpdEndpoint.data.histogram?.hist_select || null) === hist_select_options[key])
+
+          if(dims[2] > 1)
           {
-            changeHistDropdownText(key);
-            break;
+            // var reshaped_data = [];
+            setMultipleGraph(true);
+            const dataset_length = dims[0] * dims[1];
+            for(var j = 0; j<data.length; j+=dataset_length)
+            {
+              reshaped_data.push(Array.from(data.slice(j, j + dataset_length)));
+            }
+            //we need multiple plots I guess?
+            changeHistData(reshaped_data);
+            
+          }
+          else
+          {
+            setMultipleGraph(false);
+            changeHistData(data);
           }
         }
-        changeHistData(hist_data);
-      }, [ngpdEndpoint.data?.histogram?.data, ngpdEndpoint.data?.histogram?.hist_select])
+      }, [ngpdEndpoint.data?.histogram?.data, ngpdEndpoint.data?.histogram?.hist_select, ngpdEndpoint.data.histogram?.data_shape])
 
     return (
 <Container>
@@ -208,10 +244,7 @@ function HistogramPage(props) {
             </Row>
           </TitleCard>
           <TitleCard title="Histogram Data">
-            <Plot
-              data={hist_data}
-              layout={hist_layout}
-              config={{"responsive": true}}/>
+            {renderGraph()}
           </TitleCard>
         </Col>
         </Row>
