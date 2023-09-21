@@ -24,6 +24,7 @@ ffibuilder.set_source("pyngpd_cffi",
     #include "ngpd.h"
     #include "ngpd_dummy.h"
     #include "ADQAPI.h"
+    #include "datamod.h"
     """,
     libraries=libs,   # or a list of libraries to link with
     # (more arguments likse setup.py's Extension class:

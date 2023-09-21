@@ -1,3 +1,11 @@
 .vscode
 ADQ14_devkit
 install
+*.so
+*.o
+*.log
+*.sh
+*.h5
+*.pyc
+*.d16
+*.mcs

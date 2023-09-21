@@ -8,7 +8,16 @@ from pyngpd_cffi import ffi, lib
 
 from functools import partial
 
-from ngpd.ngpd import NGPD, Struct, NGPDDefaults, NGPDException
+from ngpd.ngpd import NGPD, Struct, ScopeMod, ImageMod, NGPDDefaults, NGPDException
+
+import logging
+
+import base64
+
+import h5py
+import numpy as np
+# import cv2
+
 # from ngpd.ngpd_adapter import NGPDDefaults
 
 class ngpdAdapter(ApiAdapter): 
@@ -21,7 +30,10 @@ class ngpdAdapter(ApiAdapter):
         self.adq_num = self.options.get("adq_num", NGPDDefaults.adq_num)
         self.setup_debug  = self.options.get("debug", NGPDDefaults.debug)
 
-        self.adc = {**NGPDDefaults.adc}
+        self.adc_range = self.options.get("adc_range", NGPDDefaults.adc["range"])
+        self.adc_offset = self.options.get("adc_offset", NGPDDefaults.adc['offset'])
+        self.adc_channels = self.options.get("adc_channels", NGPDDefaults.adc['channels'])
+        # self.adc = {**NGPDDefaults.adc}
 
         self.path = self.options.get("path", NGPDDefaults.path)
         self.channel = self.options.get("channel", NGPDDefaults.channel)
@@ -30,15 +42,18 @@ class ngpdAdapter(ApiAdapter):
         self.scope_update_flags = False
         self.scope_read_flag = True
 
-
         self.filter = {}
         self.filter["type"] = self.options.get("filter_type", NGPDDefaults.filter_type)
-        self.filter['type_options'] = self.ngpd.filter_type_options
+        # self.filter['type_options'] = self.ngpd.filter_type_options
         self.filter['tsamples'] = self.options.get("filter_tsamples", NGPDDefaults.t_samples)
         self.filter['num_ave'] = self.options.get("filter_num_ave", NGPDDefaults.num_ave)
         self.filter['sigma'] = self.options.get("filter_sigma", NGPDDefaults.sigma)
         self.filter['trap_top'] = self.options.get("filter_trap_top", NGPDDefaults.trap_top)
         self.filter['trap_bot'] = self.options.get("filter_trap_bot", NGPDDefaults.trap_bot)
+
+        filter_tree = {}
+        for key in self.filter:
+            filter_tree[key] = (partial(self.get_filter_option, key), partial(self.set_filter_option, select=key))
 
         self.trigger = Struct("NGPDDiffTrigger", **NGPDDefaults.trigger)
         self.measure = Struct("NGPDMeasure", **NGPDDefaults.measure)
@@ -49,22 +64,70 @@ class ngpdAdapter(ApiAdapter):
 
         self.data = []
 
+        self.data_downsample_scale = 1000
+        self.data_points_per_second = 535822336
 
+        self.dae_stretch = 20
+
+        self.bins_height = 1024
+        self.bins_tailsum = 1024
+        self.bins_falltime = 256
+        self.bins_tailratio = 1024
+        self.max_ratio = 0.5
+
+        self.selected_hist = "height"
+
+        self.hist_enable = {
+            "height": True,
+            "tail_sum": True,
+            "fall_time": True,
+            "tail_ratio": True,
+            "height_tail_sum": True,
+            "height_fall_time": True,
+            "height_tail_ratio": True,
+            "separate_ngp": True,
+            "discard_pileup": False
+        }
+        hist_options_tree = {
+            "setup": (None, self._setup_histogram),
+            "hist_select": (lambda: self.selected_hist, self.set_selected_hist),
+            "data": (self.get_hist_image, None),
+            "data_shape": (self.get_hist_shape, None),
+            "enable": {},
+            "options": {}
+        }
+        # hist_mod_tree = {}
+        # hist_config_tree = {}
+        for key in self.hist_enable:
+            hist_options_tree['enable'][key] = (partial(self.get_histogram_enable, key), partial(self.set_histogram_enable, select=key))
+            
+        hist_options_tree['options']["height"] = (lambda: self.bins_height, self.set_bins_height)
+        hist_options_tree['options']['tail_sum'] = (lambda: self.bins_tailsum, self.set_bins_tailsum)
+        hist_options_tree['options']['fall_time'] = (lambda: self.bins_falltime, self.set_bins_falltime)
+        hist_options_tree['options']['tail_ratio'] = (lambda: self.bins_tailratio, self.set_bins_tailratio)
+        hist_options_tree['options']['max_ratio'] = (lambda: self.max_ratio, self.set_max_ratio)
 
 
         self.param_tree = ParameterTree({
             "error_message": (lambda: self.ngpd.error_message, None),
-            "setup":{
+            "setup":
+            {
                 "path": (lambda: self.path, self.set_path),
                 "channel": (lambda: self.channel, self.set_channel),
                 "adq_num": (self.adq_num, None),
                 "debug": (self.setup_debug, None),
                 "setup_adq": (None, self._config_adq),
-                "is_setup": (lambda: self.ngpd.setup_flag, None)
+                "is_setup": (lambda: self.ngpd.setup_flag, None),
+                "setup_dae": (None, self.setup_dae),
+                "dae_stretch": (lambda: self.dae_stretch, self.set_dae_stretch)
+            },
+            "histogram": {
+                **hist_options_tree
             },
             "filter": 
             {
-                **self.filter,
+                **filter_tree,
+                "type_options": (self.ngpd.filter_type_options, None),
                "setup_filter": (None, self._generate_filter),
             },
             "trigger": 
@@ -84,14 +147,17 @@ class ngpdAdapter(ApiAdapter):
                 "setup_measure": (None, self._setup_measure)
             },
             "adc": {
-                **self.adc,
+                # **self.adc,
+                "range": (lambda: self.adc_range, self.set_adc_range),
+                "offset": (lambda: self.adc_offset, self.set_adc_offset),
+                "channels": (lambda: self.adc_channels, self.set_adc_channels),
                 "setup_adc": (None, self._setup_adc)
             },
             "scope_options": 
             {
                 "settings": self.scope_options.get_tree(),
                 "itfg": self.itfg.get_tree(),
-                "scope_src": (self.scope_src, self.set_scope_src),
+                "scope_src": (lambda: self.scope_src, self.set_scope_src),
                 "setup_scope_options": (None, self._setup_scope_options),
                 "setup_scope_streams": (None, self._setup_scope_streams),
                 "start_scope": (None, self._start_scope),
@@ -106,21 +172,25 @@ class ngpdAdapter(ApiAdapter):
             # "stream_overflow": (self.ngpd.get_overflow, None)
             "data": {
                 "raw_data": (self._get_raw_data, None),
-                "num_points": (len(self.data), None),
-                "refresh_data": (None, self._set_raw_data)
+                "num_points": (len(self.ngpd.data), None),
+                "refresh_data": (None, self._set_raw_data),
+                "refresh_data_time": (None, self._set_raw_data_time),
+                "save_data": (None, self._save_raw_data),
+                "downsample": (self.data_downsample_scale, None),
+                "points_per_second": (self.data_points_per_second, None)
             }
 
         })
 
-    @response_types('application/json', default='application/json')
+    @response_types('application/json', 'image/*', 'image/webp', default='application/json')
     def get(self, path, request):
         try:
             response = self.param_tree.get(path)
             content_type = 'application/json'
             status = 200
         except ParameterTreeError as param_error:
-            response = {"response: NGPD GET Error: {}".format(param_error)}
-            content_type='application/json'
+            response = {"response": "NGPD GET Error: {}".format(param_error)}
+            content_type = 'application/json'
             status = 400
         
         return ApiAdapterResponse(response, content_type=content_type, status_code=status)
@@ -147,6 +217,11 @@ class ngpdAdapter(ApiAdapter):
 
         return ApiAdapterResponse(response, content_type=content_type, status_code=status)
 
+    def set_dae_stretch(self, value):
+        self.dae_stretch = value
+
+    def setup_dae(self, _):
+        self.ngpd.set_dae_pulse(self.path, self.channel, self.dae_stretch)
 
     def set_path(self, value):
         self.path = value
@@ -156,12 +231,14 @@ class ngpdAdapter(ApiAdapter):
         self.channel = value
 
     def set_scope_src(self, value):
+        logging.debug("Setting Scope Src: %d", value)
         self.scope_src = value
 
     def _config_adq(self, _):
         self.ngpd.setup(self.adq_num, self.setup_debug)
 
     def _generate_filter(self, _):
+        logging.debug("Creating Filter with Parameters: %s", self.filter)
         self.ngpd.generate_filter(self.path, self.channel, self.filter["type"],
                                   tsamples=self.filter["tsamples"],
                                   num_ave=self.filter['num_ave'],
@@ -179,9 +256,18 @@ class ngpdAdapter(ApiAdapter):
     def _setup_measure(self, _):
         self.ngpd.setup_measure(self.path, self.channel, self.measure)
     
+    def set_adc_range(self, range):
+        self.adc_range = range
+
+    def set_adc_offset(self, offset):
+        self.adc_offset = offset
+
+    def set_adc_channels(self, channels):
+        self.adc_channels = channels
+
     def _setup_adc(self, _):
-        self.ngpd.set_adc_range_and_offset(self.path, self.adc["channels"],
-                                           self.adc["range"], self.adc['offset'])
+        self.ngpd.set_adc_range_and_offset(self.path, self.adc_channels,
+                                           self.adc_range, self.adc_offset)
 
     def _setup_scope_options(self, _):
         self.ngpd.set_scope_options(path=self.path, card=0, options=self.scope_options)
@@ -193,7 +279,99 @@ class ngpdAdapter(ApiAdapter):
         self.ngpd.start_scope(self.path, self.itfg, self.scope_update_flags, self.scope_read_flag)
 
     def _get_raw_data(self):
-        return self.data
+        # encode data as b64 string, to speed up http transfer. Decode on other end
+        encoded_data = base64.b64encode(np.ascontiguousarray(self.ngpd.data[::self.data_downsample_scale]))
+        return encoded_data.decode("utf-8")
     
     def _set_raw_data(self, points):
-        self.data = self.ngpd.read_scope_data(self.path, 0, 0, 0, points, 1, 1)
+        logging.debug("Num Points: %d", int(points))
+        self.ngpd.read_scope_data(self.path, 0, 0, 0, int(points), 1, 1)
+
+    def _set_raw_data_time(self, milliseconds):
+        logging.debug("Time: %d", milliseconds)
+        points = milliseconds * (self.data_points_per_second/1000)
+        self._set_raw_data(points)
+
+    def _save_raw_data(self, filename):
+        logging.debug("Saving Data to File: %s", filename)
+
+        if not filename.endswith(".h5"):
+            filename.append(".h5")
+        with h5py.File(filename, "w") as f:
+            dset = f.create_dataset("Data", (len(self.data),), data=self.data)
+
+    def _setup_histogram(self, _):
+        self.ngpd.setup_histogram(self.hist_enable, self.path,
+                                  self.bins_height, self.bins_tailsum, self.bins_falltime, self.bins_tailratio, self.max_ratio)
+
+    def set_histogram_enable(self, value, select):
+        logging.debug("Setting %s to %s", select, value)
+        self.hist_enable[select] = value
+
+    def get_histogram_enable(self, select):
+        return self.hist_enable[select]
+    
+    def set_filter_option(self, value, select):
+        logging.debug("Setting %s to %s", select, value)
+        self.filter[select] = value
+    
+    def get_filter_option(self, select):
+        return self.filter[select]
+    
+    def set_bins_height(self, value):
+        self.bins_height = value
+
+    def set_bins_falltime(self, value):
+        self.bins_falltime = value
+
+    def set_bins_tailratio(self, value):
+        self.bins_tailratio = value
+    
+    def set_bins_tailsum(self, value):
+        self.bins_tailsum = value
+    
+    def set_max_ratio(self, value):
+        self.max_ratio = value
+    
+    def set_selected_hist(self, hist):
+        if hist in self.ngpd.hist_mods.keys():
+            self.selected_hist = hist
+        else:
+            logging.error("Histogram %s Not Valid", hist)
+
+    def get_hist_image(self):
+        try:
+            hist_mod = self.ngpd.hist_mods[self.selected_hist]
+            hist_mod.update_data()
+            logging.debug("HISTOGRAM DATA CONTAINS NON-ZERO: %s", np.any(hist_mod.data))
+            encoded_data = base64.b64encode(hist_mod.data)
+            return encoded_data.decode("utf-8")
+            
+        except KeyError:
+            logging.error("Histogram %s Not Available", self.selected_hist)
+            return None
+
+    def get_hist_shape(self):
+        try:
+            return self.ngpd.hist_mods[self.selected_hist].data.shape
+        except KeyError:
+            return None
+    
+    @staticmethod
+    def scale_array(src, tmin, tmax):
+        """
+        Set the range of image data.
+
+        The ratio between pixels should remain the same, but the total range should be rescaled
+        to fit the desired minimum and maximum
+        :param src: the source array to rescale
+        :param tmin: the target minimum
+        :param tmax: the target maximum
+        :return: an array of the same dimensions as the source, but with the data rescaled.
+        """
+        smin, smax = src.min(), src.max()
+
+        downscaled = (src.astype(float) - smin) / (smax - smin)
+        rescaled = (downscaled * (tmax - tmin) + tmin).astype(src.dtype)
+
+        return rescaled
