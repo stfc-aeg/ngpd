@@ -9,3 +9,4 @@ install
 *.pyc
 *.d16
 *.mcs
+ngpd_lib/**/*.c

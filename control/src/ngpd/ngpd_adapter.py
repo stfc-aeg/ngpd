@@ -128,7 +128,7 @@ class ngpdAdapter(ApiAdapter):
             {
                 **filter_tree,
                 "type_options": (self.ngpd.filter_type_options, None),
-               "setup_filter": (None, self._generate_filter),
+                "setup_filter": (None, self._generate_filter),
             },
             "trigger": 
             {
@@ -343,8 +343,8 @@ class ngpdAdapter(ApiAdapter):
         try:
             hist_mod = self.ngpd.hist_mods[self.selected_hist]
             hist_mod.update_data()
-            logging.debug("HISTOGRAM DATA CONTAINS NON-ZERO: %s", np.any(hist_mod.data))
-            encoded_data = base64.b64encode(hist_mod.data)
+            # we need to flatten the data correctly before encoding
+            encoded_data = base64.b64encode(hist_mod.data.flatten("F"))
             return encoded_data.decode("utf-8")
             
         except KeyError:
