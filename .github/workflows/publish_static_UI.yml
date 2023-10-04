@@ -31,11 +31,11 @@ jobs:
       - name: Create TGZ archive
         run: |
           cd build
-          tar -cvzf app_build.tgz app
+          tar -cvzf app_build.tgz ngpd-react
       - name: Create ZIP Archive
         run: |
           cd build
-          zip -r app_build.zip app
+          zip -r app_build.zip ngpd-react
       - name: List Built Files
         run: ls -lR build
       - name: Create Release
@@ -43,5 +43,5 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            control/app/build/app_build.tgz
-            control/app/build/app_build.zip
+            control/test/static/ngpd-react/build/app_build.tgz
+            control/test/static/ngpd-react/build/app_build.zip
