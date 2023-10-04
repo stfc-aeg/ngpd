@@ -147,7 +147,7 @@ function HistogramPage(props) {
             changeHistData(data);
           }
         }
-      }, [ngpdEndpoint.data?.histogram?.data, ngpdEndpoint.data?.histogram?.hist_select, ngpdEndpoint.data.histogram?.data_shape])
+      }, [ngpdEndpoint.data.histogram?.data, ngpdEndpoint.data.histogram?.hist_select, ngpdEndpoint.data.histogram?.data_shape])
 
     return (
 <Container>
