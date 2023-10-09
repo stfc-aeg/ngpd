@@ -18,6 +18,8 @@ import h5py
 import numpy as np
 # import cv2
 
+from tornado.ioloop import IOLoop
+
 # from ngpd.ngpd_adapter import NGPDDefaults
 
 class ngpdAdapter(ApiAdapter): 
@@ -276,7 +278,12 @@ class ngpdAdapter(ApiAdapter):
         self.ngpd.set_scope_streams(path=self.path, card=0, stream=0, channel=self.channel, source_type=self.ngpd.scope_src_options[self.scope_src])
 
     def _start_scope(self, _):
-        self.ngpd.start_scope(self.path, self.itfg, self.scope_update_flags, self.scope_read_flag)
+        # self.ngpd.start_scope(self.path, self.itfg, self.scope_update_flags, self.scope_read_flag)
+        logging.debug("Starting Scope in Executor Thread")
+        IOLoop.current().run_in_executor(None, self.ngpd.start_scope,
+                                         self.path, self.itfg,
+                                         self.scope_update_flags, self.scope_read_flag)
+        logging.debug("Excecutor Thread Started")
 
     def _get_raw_data(self):
         # encode data as b64 string, to speed up http transfer. Decode on other end

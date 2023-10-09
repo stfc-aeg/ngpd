@@ -200,7 +200,6 @@ class NGPD():
             return -1
 
     def read_scope_data(self, path, sx, sy, st, dx, dy, dt):
-        i = 0
         np.resize(self.data, dx) # make sure the data array is the correct size
         for t in range(st, dt):
 
@@ -223,7 +222,7 @@ class NGPD():
         return
 
     def start_scope(self, path, itfg, update_settings, read):
-        
+        logging.debug("Starting Scope")
         # itfg_setup = Struct("NGPDITFGSetup")
         scope_status = ffi.new("uint32_t *")
 
@@ -257,6 +256,7 @@ class NGPD():
             self.get_error_message()
             return -1
 
+        logging.debug("READING: %s", read)
         if read:
             val = lib.ngpd_dma_wait_scope(path, card, scope_status)
             if val < 0:
@@ -266,12 +266,9 @@ class NGPD():
 
             if lib.ngpd_dma_read_scope(path, card, 0, 0, 0) < 0:
                 self.get_error_message()
-        
         lib.ngpd_set_run_flags(path, save_flags)
-
+        logging.debug("Finishing Scope")
         # self.read_scope_data()
-
-
 
     def get_error_message(self):
         self.error_message = str(ffi.string(lib.ngpd_get_error_message()))
