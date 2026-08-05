@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm>=8", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ngpd"
+description = "Odin Control Adapter project for the NGPD Multi-channel system"
+dynamic = ["version"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+    "odin-control>=2.0",
+    "cffi>=2.0"
+]
+readme = "README.md"
+
+[[project.authors]] 
+email = "ashley.neaves@stfc.ac.uk"
+name = "Ashley Neaves"
+
+[project.urls]
+GitHub = "https://github.com/stfc-aeg/ngpd"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
+# Optional settings for setuptools_scm
+root = "."
+write_to = "src/ngpd/_version.py"
+version_scheme = "no-guess-dev"
+local_scheme = "node-and-date"
