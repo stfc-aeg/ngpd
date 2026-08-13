@@ -39,8 +39,8 @@ set(NGPD_SRC_FILES
 )
 
 
-set(NGPD_CDEF "${CMAKE_CURRENT_SOURCE_DIR}/src/ngpd/lib/pyngpd.h")
-set(NGPD_CSRC "${CMAKE_CURRENT_SOURCE_DIR}/src/ngpd/lib/pyngpd.csrc.c")
+set(NGPD_CDEF "${CMAKE_CURRENT_SOURCE_DIR}/src/ngpd/cffi_lib/pyngpd.h")
+set(NGPD_CSRC "${CMAKE_CURRENT_SOURCE_DIR}/src/ngpd/cffi_lib/pyngpd.csrc.c")
 
 # IMG_MOD OBJECTS LIBRARY~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 add_library(img_mod OBJECT lib/img_mod/img_mod.c lib/img_mod/img_mod_linux.c)
@@ -82,7 +82,7 @@ else()
   python_add_library(_core MODULE WITH_SOABI
                      "${CMAKE_CURRENT_BINARY_DIR}/_pyngpd.c" ${NGPD_SRC_FILES})
 endif()
-target_include_directories(_core PRIVATE lib)
+target_include_directories(_core PRIVATE lib/include)
 target_link_libraries(_core PUBLIC _ngpd)
 
 install(TARGETS _core DESTINATION ngpd)
