@@ -2,23 +2,34 @@
 NGPD C library
 Python Interface built using CFFI
 """
+from typing import Final
 
-NGPDTrigSW: int
-NGPDDataSrcPlayback: int
-NGPDDataSrcADCFWD: int
+NGPDTrigSW: Final[int]
+NGPDDataSrcPlayback: Final[int]
+NGPDDataSrcADCFWD: Final[int]
 
-NGPD_RUN_FLAGS_SCOPEMODE: int
-NGPD_RUN_FLAGS_PLAYBACK: int
-NGPD_RUN_FLAGS_PLAYBACK_CONTINUOUS: int
+NGPD_RUN_FLAGS_SCOPEMODE: Final[int]
+NGPD_RUN_FLAGS_PLAYBACK: Final[int]
+NGPD_RUN_FLAGS_PLAYBACK_CONTINUOUS: Final[int]
 
-NGZMPClkSrcFPGA: int
-NGZMPClkSrcLMK61E2: int
+NGZMPClkSrcFPGA: Final[int]
+NGZMPClkSrcLMK61E2: Final[int]
+
+NGZMP_I2C_NUM_ADT7410_ADC: Final[int]
+"""Number of ADT7410 temperature monitor chips on PCB."""
+
+NGZMP_I2C_NUM_ADT7410_PREAMP: Final[int]
+"""Number of ADT7410 temperature monitor chips on PCB"""
 
 
 def ngpd_config_ngzmp(ncards: int, baseIPaddress: str,
                       basePort: int, baseMACaddress: str, num_chan: int,
                       debug: int, card_index: int, do_init: int, dummy_system: int) -> int:
     """Configure connection to NGPD Card"""
+
+
+def ngpd_get_num_chan(path: int) -> int:
+    """returns the total number of channels for this configured system"""
 
 
 def ngpd_get_error_message() -> str:
@@ -115,3 +126,11 @@ def ngzmp_adc_setup_adc():
 
 def ngzmp_adc_read_status():
     """"""
+
+
+def ngpd_i2c_read_adc_temp(path: int, card: int, temp: list[float], status: list[int]):
+    """Read the temperatures from the available sensors on the ADC chips"""
+
+
+def ngpd_i2c_read_preamp_temp(path: int, card: int, temp: list[float], status: list[int]):
+    """Read the temperatures from the available sensors on the preamps"""
