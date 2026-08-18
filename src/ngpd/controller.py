@@ -49,10 +49,10 @@ class NgpdController(BaseController):
 
         monitoring_tree = {
             "adc": {
-                "temps": (self.read_adc_temps, None)
+                "temps": (lambda: self.device.adc_temps, None)
             },
             "preamp": {
-                "temps": (self.read_preamp_temps, None)
+                "temps": (lambda: self.device.preamp_temps, None)
             }
         }
 

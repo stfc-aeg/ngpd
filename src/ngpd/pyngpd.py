@@ -161,7 +161,7 @@ class PyNgpd:
         bsub.div_cont = c_bsub.div_cont
         return bsub
 
-    def write_basesub(self, chan, bsub: PyNGPDbassub):
+    def write_basesub(self, chan: int, bsub: PyNGPDbassub):
         c_bsub = ffi.new("NGPDBaseSubtract *")
         c_bsub.use_fixed = 1 if bsub.use_fixed else 0
         c_bsub.fixed = bsub.fixed
@@ -170,7 +170,7 @@ class PyNgpd:
         rc = lib.ngpd_write_baseline_subtract(self.path, chan, c_bsub)
         return rc
 
-    def read_tail_measure(self, chan):
+    def read_tail_measure(self, chan: int):
         c_measure = ffi.new("NGPDMeasure *")
         rc = lib.ngpd_read_measure(self.path, chan, c_measure)
         if rc < 0:
@@ -187,7 +187,7 @@ class PyNgpd:
             bool(c_measure.adaptive_tail_sum),
             c_measure.min_fall_time, c_measure.max_fall_time,
             c_measure.min_tail_count,
-            bool(c_measure.ignore_falL_time),
+            bool(c_measure.ignore_fall_time),
             bool(c_measure.ignore_tail_sum),
             c_measure.tail_thres_c[0],
             c_measure.tail_thres_m[0] / 0x800000
@@ -253,7 +253,7 @@ class PyNgpd:
             logging.error(self.get_error_message())
         return rc
 
-    def get_filter_type(self, chan) -> PyNGPDFilter:
+    def get_filter_type(self, chan: int) -> PyNGPDFilter | None:
         c_filter = ffi.new("NGPDFilter *")
 
         rc = lib.ngpd_get_filter_type(self.path, chan, c_filter)
@@ -262,7 +262,7 @@ class PyNgpd:
             return None
         py_filt = PyNGPDFilter()
 
-        py_filt.filt_type = c_filter.type
+        py_filt.filt_type = FilterType(c_filter.type)
         py_filt.iarg1 = c_filter.iarg1
         py_filt.iarg2 = c_filter.iarg2
         py_filt.darg = c_filter.darg
