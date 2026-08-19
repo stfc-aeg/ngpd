@@ -1,10 +1,21 @@
 from ngpd.pyngpd import PyNgpd, DummyLevel
 from ngpd.pyngpd import PyNGPDFilter, PyNGPDDiffTrigger, PyNGPDbassub, PyNGPDTailMeasure
+from ngpd.pyngpd import ANALOG_MAX_GAIN, ANALOG_MAX_OFFSET
+from ngpd.pyngpd import BSUB_MAX_ERROR, BSUB_MAX_FIXED, BSUB_MIN_FIXED
+from ngpd.pyngpd import MIN_DIV_CONT, NUM_DIV_CONT
+from ngpd.pyngpd import (MEASURE_MAX_DELAY, MEASURE_MAX_FALL_TIME, MEASURE_MAX_HEIGHT,
+                         MEASURE_MAX_SUM_NUM, MEASURE_MAX_TAIL_COUNT, MEASURE_THRES_SIZE)
 from ngpd.util import UsesNgpdLibrary, NgpdLibException
 from ipaddress import ip_address
 from typing import Literal
 from math import log2
 import logging
+
+TailMeasureSetting = Literal["delay", "sample", "fall_frac",
+                             "enb_subtract", "enb_subtract_test", "enb_subtract_neutron",
+                             "enb_tail_sum", "enb_fall_time", "enb_adaptive_sum",
+                             "min_height", "max_height", "min_fall", "max_fall", "min_count",
+                             "thres_c", "thres_m"]
 
 
 class NgpdDevice:
@@ -13,17 +24,7 @@ class NgpdDevice:
     and the interface class of PyNgpd
     """
 
-    MAX_ANALOG_GAIN = 35
-    MAX_ANALOG_OFFSET = 65535
-
-    MIN_BSUB_FIXED = -65536
-    MAX_BSUB_FIXED = 65535
-
-    MAX_BSUB_ERROR = 65535
-
-    MIN_DIV_CONT = 64
-    NUM_DIV_CONT = 8
-    DIV_CONT_ALLOWED = [64 * (2 ** x) for x in range(8)]
+    DIV_CONT_ALLOWED = [MIN_DIV_CONT * (2 ** i) for i in range(NUM_DIV_CONT)]
 
     def __init__(self, options: dict[str, str]):
         self.ip = ip_address(options.get("ip_addr", "192.168.0.1"))
@@ -64,7 +65,7 @@ class NgpdDevice:
                 "fixed": (
                     lambda: [sub.fixed for sub in self.base_sub],
                     lambda v: self.set_base_sub("fixed", v),
-                    {"description": "Fixed values for each channel's Baseline Subtraction, if used"}
+                    {"description": "Fixed values for each channel's Baseline Subtraction"}
                 ),
                 "error_limit": (
                     lambda: [sub.error_limit for sub in self.base_sub],
@@ -72,7 +73,7 @@ class NgpdDevice:
                     {"description": "Baseline Subtraction Error Limit for each channel"}
                 ),
                 "div_cont": (
-                    lambda: [64 * (2 ** sub.div_cont) for sub in self.base_sub],
+                    lambda: [MIN_DIV_CONT * (2 ** sub.div_cont) for sub in self.base_sub],
                     lambda v: self.set_base_sub("div_cont", v),
                     {"description": "Division Count for each channel's Baseline Subtraction"}
                 )
@@ -153,6 +154,46 @@ class NgpdDevice:
                     None,
                     {"description": "Tail Threshold M"}
                 )
+            },
+            "tail_measure": {
+                # lambdas in dict comprehension have scoping issues, so the index
+                # is getting set as a default argument to bind it per channel
+                f"channel_{i}": {
+                    "delay": (
+                        lambda i=i: self.tail_measure[i].tail_sum_delay,
+                        lambda v, i=i: self.set_tail_measure(i, "delay", v),
+                        {"description": "Tail Sum Delay",
+                         "min": 0, "max": MEASURE_MAX_DELAY}
+                    ),
+                    "num_sample": (
+                        lambda i=i: self.tail_measure[i].tail_sum_sample,
+                        lambda v, i=i: self.set_tail_measure(i, "sample", v),
+                        {"description": "Number of samples for Tail Sum measurement",
+                         "min": 1, "max": MEASURE_MAX_SUM_NUM}
+                    ),
+                    "fall_time_frac": (
+                        lambda i=i: self.tail_measure[i].fall_time_frac,
+                        lambda v, i=i: self.set_tail_measure(i, "fall_frac", v),
+                        {"description": "Ratio for fall time calculation",
+                         "min": 0.0, "max": 1.0}
+                    ),
+                    "enable_tail_subtract": (
+                        lambda i=i: self.tail_measure[i].enable_tail_subtract,
+                        lambda v, i=i: self.set_tail_measure(i, "enb_subtract", v),
+                        {"description": "Toggle Tail Subtraction"}
+                    ),
+                    "enable_subtract_test": (
+                        lambda i=i: self.tail_measure[i].enable_subtract_test,
+                        lambda v, i=i: self.set_tail_measure(i, "enb_subtract_test", v),
+                        {"description": "Toggle Tail Subtraction Test"}
+                    ),
+                    "enable_subtract_neutron": (
+                        lambda i=i: self.tail_measure[i].enable_subtract_neutron,
+                        lambda v, i=i: self.set_tail_measure(i, "enb_subtract_neutron", v),
+                        {"description": "Toggle Test Neutron Subtraction"}
+                    )
+                }
+                for i in range(len(self.tail_measure))
             }
         }
 
@@ -173,10 +214,10 @@ class NgpdDevice:
     def set_gain(self, values: list[int]):
         """Set the Gain for every channel"""
         for i, val in enumerate(values):
-            if not (0 <= val <= self.MAX_ANALOG_GAIN):
+            if not (0 <= val <= ANALOG_MAX_GAIN):
                 raise NgpdLibException(
                     f"Invalid value for channel {i} gain. "
-                    f"{val} not between 0 and {self.MAX_ANALOG_GAIN}"
+                    f"{val} not between 0 and {ANALOG_MAX_GAIN}"
                 )
         self.ngpd.write_dga_gain(0, values)
 
@@ -189,10 +230,10 @@ class NgpdDevice:
     @UsesNgpdLibrary
     def set_offset(self, values: list[int]):
         for i, val in enumerate(values):
-            if not (0 <= val <= self.MAX_ANALOG_OFFSET):
+            if not (0 <= val <= ANALOG_MAX_OFFSET):
                 raise NgpdLibException(
                     f"Invalid value for channel {i} offset. ",
-                    f"{val} not between 0 and {self.MAX_ANALOG_GAIN}"
+                    f"{val} not between 0 and {ANALOG_MAX_OFFSET}"
                 )
         self.ngpd.write_preamp_offset(0, values)
 
@@ -220,18 +261,18 @@ class NgpdDevice:
                 subs[i].use_fixed = value
         elif setting == "fixed":
             for i, value in enumerate(values):
-                if not (self.MIN_BSUB_FIXED <= value <= self.MAX_BSUB_FIXED):
+                if not (BSUB_MIN_FIXED <= value <= BSUB_MAX_FIXED):
                     raise NgpdLibException(
                         f"Invalid value for bsub fixed on channel {i}. "
-                        f"{value} is not between {self.MIN_BSUB_FIXED} and {self.MAX_BSUB_FIXED}"
+                        f"{value} is not between {BSUB_MIN_FIXED} and {BSUB_MAX_FIXED}"
                     )
                 subs[i].fixed = value
         elif setting == "error_limit":
             for i, value in enumerate(values):
-                if not (0 <= value <= self.MAX_BSUB_FIXED):
+                if not (0 <= value <= BSUB_MAX_ERROR):
                     raise NgpdLibException(
                         f"Invalid value for bsub error limit on channel {i}. "
-                        f"{value} is not between 0 and {self.MAX_BSUB_ERROR}"
+                        f"{value} is not between 0 and {BSUB_MAX_ERROR}"
                     )
                 subs[i].error_limit = value
         elif setting == "div_cont":
@@ -241,7 +282,7 @@ class NgpdDevice:
                         f"Invalid value {value} for bsub Div Count. ",
                         f"Must be one of {self.DIV_CONT_ALLOWED}"
                     )
-                subs[i] = int(log2(value / self.MIN_DIV_CONT))
+                subs[i] = int(log2(value / MIN_DIV_CONT))
 
         for i, bsub in enumerate(subs):
             self.ngpd.write_basesub(i, bsub)
@@ -265,6 +306,48 @@ class NgpdDevice:
                     self._tail_measure[index] = self.ngpd.read_tail_measure(index)
         return [PyNGPDTailMeasure() if measure is None else measure
                 for measure in self._tail_measure]
+
+    @UsesNgpdLibrary
+    def set_tail_measure(self, chan: int, setting: TailMeasureSetting, value: int | bool | float):
+
+        measure = self.tail_measure[chan]
+
+        if setting == "delay":
+            measure.tail_sum_delay = value
+        elif setting == "sample":
+            measure.tail_sum_sample = value
+        elif setting == "fall_frac":
+            measure.fall_time_frac = float(value)
+        elif setting == "min_height":
+            measure.min_height = value
+        elif setting == "max_height":
+            measure.max_height = value
+        elif setting == "min_fall":
+            measure.min_fall = value
+        elif setting == "max_fall":
+            measure.max_fall = value
+        elif setting == "min_count":
+            measure.min_count = value
+        elif setting == "enb_adaptive_sum":
+            measure.adaptive_tail_sum = value
+        elif setting == "enb_subtract":
+            measure.enable_tail_subtract = value
+        elif setting == "enb_subtract_test":
+            measure.enable_subtract_test = value
+        elif setting == "enb_subtract_neutron":
+            measure.enable_subtract_neutron = value
+        elif setting == "enb_fall_time":
+            measure.ignore_fall_time = not value
+        elif setting == "enb_tail_sum":
+            measure.ignore_tail_sum = not value
+        elif setting == "thres_c":
+            measure.tail_thres_c = value
+        elif setting == "thres_m":
+            measure.tail_thres_m = value
+        else:
+            raise NgpdLibException(f"Invalid Tail Measure Setting {setting}")
+
+        self.ngpd.write_tail_measure(chan, measure)
 
     @property
     def adc_temps(self):

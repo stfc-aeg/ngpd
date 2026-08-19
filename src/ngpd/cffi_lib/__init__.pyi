@@ -21,6 +21,14 @@ NGZMP_I2C_NUM_ADT7410_ADC: Final[int]
 NGZMP_I2C_NUM_ADT7410_PREAMP: Final[int]
 """Number of ADT7410 temperature monitor chips on PCB"""
 
+NGPD_MEASURE_TAIL_THRES_SIZE: Final[int]
+
+NGPD_MEASURE_SUM_DELAY_MAX: Final[int]
+NGPD_MEASURE_SUM_NUM_MAX: Final[int]
+NGPD_MEASURE_HEIGHT_MAX: Final[int]
+NGPD_MEASURE_FALL_TIME_MAX: Final[int]
+NGPD_MEASURE_TAIL_COUNT_MAX: Final[int]
+
 
 def ngpd_config_ngzmp(ncards: int, baseIPaddress: str,
                       basePort: int, baseMACaddress: str, num_chan: int,
@@ -60,11 +68,11 @@ def ngpd_write_baseline_subtract():
     """"""
 
 
-def ngpd_read_measure():
+def ngpd_read_measure(path: int, chan: int, measure):
     """"""
 
 
-def ngpd_write_measure():
+def ngpd_write_measure(path: int, chan: int, measure):
     """"""
 
 

@@ -6,6 +6,23 @@ from enum import IntEnum, auto
 import logging
 import numpy as np
 
+ANALOG_MAX_GAIN = 35
+ANALOG_MAX_OFFSET = 65535
+
+BSUB_MIN_FIXED = -65536
+BSUB_MAX_FIXED = 65535
+BSUB_MAX_ERROR = 65535
+
+MIN_DIV_CONT = 64
+NUM_DIV_CONT = 8
+
+MEASURE_THRES_SIZE = lib.NGPD_MEASURE_TAIL_THRES_SIZE
+MEASURE_MAX_DELAY = lib.NGPD_MEASURE_SUM_DELAY_MAX
+MEASURE_MAX_SUM_NUM = lib.NGPD_MEASURE_SUM_NUM_MAX
+MEASURE_MAX_HEIGHT = lib.NGPD_MEASURE_HEIGHT_MAX
+MEASURE_MAX_FALL_TIME = lib.NGPD_MEASURE_FALL_TIME_MAX
+MEASURE_MAX_TAIL_COUNT = lib.NGPD_MEASURE_TAIL_COUNT_MAX
+
 
 class DummyLevel(IntEnum):
     """Defines level of Dummy parts to the system, IE how much to simulate"""
@@ -195,8 +212,28 @@ class PyNgpd:
 
         return measure
 
-    def writemeasure(self, chan, measure):
-        rc = lib.ngpd_write_measure(self.path, chan, measure)
+    def write_tail_measure(self, chan: int, measure: PyNGPDTailMeasure) -> int:
+        c_measure = ffi.new("NGPDMeasure *")
+        c_measure.tail_sum_delay = measure.tail_sum_delay
+        c_measure.tail_sum_num = measure.tail_sum_sample
+        c_measure.fall_time_frac = measure.fall_time_frac
+        c_measure.enable_tail_subtract = int(measure.enable_tail_subtract)
+        c_measure.tail_subtract_test = int(measure.enable_subtract_test)
+        c_measure.tail_subtract_test_neutron = int(measure.enable_subtract_neutron)
+        c_measure.min_height = measure.min_height
+        c_measure.max_height = measure.max_height
+        c_measure.adaptive_tail_sum = int(measure.adaptive_tail_sum)
+        c_measure.min_fall_time = measure.min_fall
+        c_measure.max_fall_time = measure.max_fall
+        c_measure.min_tail_count = measure.min_count
+        c_measure.ignore_fall_time = int(measure.ignore_fall_time)
+        c_measure.ignore_tail_sum = int(measure.ignore_tail_sum)
+
+        for i in range(lib.NGPD_MEASURE_TAIL_THRES_SIZE):
+            c_measure.tail_thres_c[i] = measure.tail_thres_c
+            c_measure.tail_thres_m[i] = int(measure.tail_thres_m * 0x800000)
+
+        rc = lib.ngpd_write_measure(self.path, chan, c_measure)
         return rc
 
     def write_diff_trigger(self, chan, trig: PyNGPDDiffTrigger):
