@@ -15,11 +15,12 @@ from typing import Literal
 from math import log2
 import logging
 
-TailMeasureSetting = Literal["delay", "sample", "fall_frac",
-                             "enb_subtract", "enb_subtract_test", "enb_subtract_neutron",
-                             "enb_tail_sum", "enb_fall_time", "enb_adaptive_sum",
+TailMeasureSetting = Literal["tail_sum_delay", "tail_sum_sample", "fall_time_frac",
+                             "enable_tail_subtract", "enable_subtract_test",
+                             "enable_subtract_neutron",
+                             "ignore_tail_sum", "ignore_fall_time", "adaptive_tail_sum",
                              "min_height", "max_height", "min_fall", "max_fall", "min_count",
-                             "thres_c", "thres_m"]
+                             "tail_thres_c", "tail_thres_m"]
 
 FilterSetting = Literal["type", "arg1", "arg2", "darg"]
 
@@ -151,17 +152,17 @@ class NgpdDevice:
                     ),
                     "adaptive": (
                         lambda i=i: self.channels[i].tail_measure.adaptive_tail_sum,
-                        lambda v, i=i: self.channels[i].set_tail_measure("enb_adaptive_sum", v),
+                        lambda v, i=i: self.channels[i].set_tail_measure("adaptive_tail_sum", v),
                         {"description": "Toggle the Adaptive Tail Sum"}
                     ),
                     "enable_tail_sum": (
                         lambda i=i: not self.channels[i].tail_measure.ignore_tail_sum,
-                        lambda v, i=i: self.channels[i].set_tail_measure("enb_tail_sum", v),
+                        lambda v, i=i: self.channels[i].set_tail_measure("ignore_tail_sum", not v),
                         {"description": "Toggle the use of the Tail sum in the discrimination"}
                     ),
                     "enable_fall_time": (
                         lambda i=i: self.channels[i].tail_measure.ignore_fall_time,
-                        lambda v, i=i: self.channels[i].set_tail_measure("enb_fall_time", v),
+                        lambda v, i=i: self.channels[i].set_tail_measure("ignore_fall_time", not v),
                         {"description": "Toggle the use of the Fall Time in the discrimination"}
                     ),
                     "min_fall": (
@@ -184,13 +185,13 @@ class NgpdDevice:
                     ),
                     "threshold_c": (
                         lambda i=i: self.channels[i].tail_measure.tail_thres_c,
-                        lambda v, i=i: self.channels[i].set_tail_measure("thres_c", v),
+                        lambda v, i=i: self.channels[i].set_tail_measure("tail_thres_c", v),
                         {"description": "C parameter for threshold calculation",
                          "min": -0x4000000, "max": 0x4000000-1}  # TODO: set up as consts in PyNgpd
                     ),
                     "threshold_m": (
                         lambda i=i: self.channels[i].tail_measure.tail_thres_m,
-                        lambda v, i=i: self.channels[i].set_tail_measure("thres_m", v),
+                        lambda v, i=i: self.channels[i].set_tail_measure("tail_thres_m", v),
                         {"description": "M parameter for threshold calculation",
                          "min": 0}
                     )
@@ -201,35 +202,35 @@ class NgpdDevice:
                 f"channel_{i}": {
                     "delay": (
                         lambda i=i: self.channels[i].tail_measure.tail_sum_delay,
-                        lambda v, i=i: self.channels[i].set_tail_measure("delay", v),
+                        lambda v, i=i: self.channels[i].set_tail_measure("tail_sum_delay", v),
                         {"description": "Tail Sum Delay",
                          "min": 0, "max": MEASURE_MAX_DELAY}
                     ),
                     "num_sample": (
                         lambda i=i: self.channels[i].tail_measure.tail_sum_sample,
-                        lambda v, i=i: self.channels[i].set_tail_measure("sample", v),
+                        lambda v, i=i: self.channels[i].set_tail_measure("tail_sum_sample", v),
                         {"description": "Number of samples for Tail Sum measurement",
                          "min": 1, "max": MEASURE_MAX_SUM_NUM}
                     ),
                     "fall_time_frac": (
                         lambda i=i: self.channels[i].tail_measure.fall_time_frac,
-                        lambda v, i=i: self.channels[i].set_tail_measure("fall_frac", v),
+                        lambda v, i=i: self.channels[i].set_tail_measure("fall_time_frac", v),
                         {"description": "Ratio for fall time calculation",
                          "min": 0.0, "max": 1.0}
                     ),
                     "enable_tail_subtract": (
                         lambda i=i: self.channels[i].tail_measure.enable_tail_subtract,
-                        lambda v, i=i: self.channels[i].set_tail_measure("enb_subtract", v),
+                        lambda v, i=i: self.channels[i].set_tail_measure("enable_tail_subtract", v),
                         {"description": "Toggle Tail Subtraction"}
                     ),
                     "enable_subtract_test": (
                         lambda i=i: self.channels[i].tail_measure.enable_subtract_test,
-                        lambda v, i=i: self.channels[i].set_tail_measure("enb_subtract_test", v),
+                        lambda v, i=i: self.channels[i].set_tail_measure("enable_subtract_test", v),
                         {"description": "Toggle Tail Subtraction Test"}
                     ),
                     "enable_subtract_neutron": (
                         lambda i=i: self.channels[i].tail_measure.enable_subtract_neutron,
-                        lambda v, i=i: self.channels[i].set_tail_measure("enb_subtract_neutron", v),
+                        lambda v, i=i: self.channels[i].set_tail_measure("enable_subtract_neutron", v),
                         {"description": "Toggle Test Neutron Subtraction"}
                     )
                 }
@@ -426,39 +427,8 @@ class NgpdChannel:
 
     @UsesNgpdLibrary
     def set_tail_measure(self, setting: TailMeasureSetting, value: int | float):
-
-        if setting == "delay":
-            self.tail_measure.tail_sum_delay = value
-        elif setting == "sample":
-            self.tail_measure.tail_sum_sample = value
-        elif setting == "fall_frac":
-            self.tail_measure.fall_time_frac = float(value)
-        elif setting == "min_height":
-            self.tail_measure.min_height = value
-        elif setting == "max_height":
-            self.tail_measure.max_height = value
-        elif setting == "min_fall":
-            self.tail_measure.min_fall = value
-        elif setting == "max_fall":
-            self.tail_measure.max_fall = value
-        elif setting == "min_count":
-            self.tail_measure.min_count = value
-        elif setting == "enb_adaptive_sum":
-            self.tail_measure.adaptive_tail_sum = value
-        elif setting == "enb_subtract":
-            self.tail_measure.enable_tail_subtract = value
-        elif setting == "enb_subtract_test":
-            self.tail_measure.enable_subtract_test = value
-        elif setting == "enb_subtract_neutron":
-            self.tail_measure.enable_subtract_neutron = value
-        elif setting == "enb_fall_time":
-            self.tail_measure.ignore_fall_time = not value
-        elif setting == "enb_tail_sum":
-            self.tail_measure.ignore_tail_sum = not value
-        elif setting == "thres_c":
-            self.tail_measure.tail_thres_c = value
-        elif setting == "thres_m":
-            self.tail_measure.tail_thres_m = value
+        if hasattr(self.tail_measure, setting):
+            setattr(self.tail_measure, setting, value)
         else:
             raise NgpdLibException(f"Invalid Tail Measure Setting {setting}")
 
