@@ -29,6 +29,19 @@ NGPD_MEASURE_HEIGHT_MAX: Final[int]
 NGPD_MEASURE_FALL_TIME_MAX: Final[int]
 NGPD_MEASURE_TAIL_COUNT_MAX: Final[int]
 
+NGPD_DIFF_TRIG_MIN_SEP: Final[int]
+NGPD_DIFF_TRIG_MAX_SEP: Final[int]
+NGPD_DIFF_TRIG_MIN_DATA_DELAY: Final[int]
+NGPD_DIFF_TRIG_MAX_DATA_DELAY: Final[int]
+NGPD_DIFF_TRIG_MIN_TRIG_DELAY: Final[int]
+NGPD_DIFF_TRIG_MAX_TRIG_DELAY: Final[int]
+NGPD_DIFF_TRIG_MIN_DELAY_AB: Final[int]
+NGPD_DIFF_TRIG_MAX_DELAY_AB: Final[int]
+NGPD_DIFF_TRIG_MIN_TRIG_STRETCH: Final[int]
+NGPD_DIFF_TRIG_MAX_TRIG_STRETCH: Final[int]
+NGPD_DIFF_TRIG_MIN_THRES: Final[int]
+NGPD_DIFF_TRIG_MAX_THRES: Final[int]
+
 
 def ngpd_config_ngzmp(ncards: int, baseIPaddress: str,
                       basePort: int, baseMACaddress: str, num_chan: int,

@@ -1,4 +1,4 @@
-from ngpd.pyngpd import PyNgpd, DummyLevel
+from ngpd.pyngpd import PyNgpd, DummyLevel, FilterType
 from ngpd.pyngpd import PyNGPDFilter, PyNGPDDiffTrigger, PyNGPDbassub, PyNGPDTailMeasure
 from ngpd.pyngpd import ANALOG_MAX_GAIN, ANALOG_MAX_OFFSET
 from ngpd.pyngpd import BSUB_MAX_ERROR, BSUB_MAX_FIXED, BSUB_MIN_FIXED
@@ -16,6 +16,13 @@ TailMeasureSetting = Literal["delay", "sample", "fall_frac",
                              "enb_tail_sum", "enb_fall_time", "enb_adaptive_sum",
                              "min_height", "max_height", "min_fall", "max_fall", "min_count",
                              "thres_c", "thres_m"]
+
+FilterSetting = Literal["type", "arg1", "arg2", "darg"]
+
+TriggerSetting = Literal["thres", "sep", "data_delay", "trig_delay",
+                         "delay_a", "delay_b", "width_a", "width_b"]
+
+BaseSubSetting = Literal["use_fixed", "fixed", "error_limit", "div_cont"]
 
 
 class NgpdDevice:
@@ -39,161 +46,190 @@ class NgpdDevice:
         self._analog_gain = [0] * 8
         self._analog_offset = [0] * 8
 
-        self._base_sub: list[PyNGPDbassub] = [None] * 8
-        self._filter: list[PyNGPDFilter] = [None] * 8
-        self._tail_measure: list[PyNGPDTailMeasure] = [None] * 8
+        self.channels = [NgpdChannel(i) for i in range(8)]
 
         self.tree = {
             "analog": {
-                "gain": (
-                    lambda: self.gain,
-                    self.set_gain,
-                    {"description": "Analog Gain for each channel"}
-                ),
-                "offset": (
-                    lambda: self.offset,
-                    self.set_offset,
-                    {"description": "Analog Offset for each channel"}
-                )
+                f"channel_{i}": {
+                    "gain": (
+                        lambda i=i: self.channels[i].analog_gain,
+                        lambda v, i=i: self.channels[i].set_analog_gain(v),
+                        {"description": "ADC Analog Gain",
+                         "min": 0, "max": ANALOG_MAX_GAIN}
+                    ),
+                    "offset": (
+                        lambda i=i: self.channels[i].analog_offset,
+                        lambda v, i=i: self.channels[i].set_analog_offset(v),
+                        {"description": "Preamp Analog Offset",
+                         "min": 0, "max": ANALOG_MAX_OFFSET}
+                    )
+                }
+                for i in range(len(self.channels))
             },
+            # lambdas in dict comprehension have scoping issues, so the index
+            # is getting set as a default argument (eg: lambda i=i) to bind it per channel.
+            # Without this, all of the channels would affect only the last (channel_7)
+            # this is also why were using the list index rather than iterating over the list itself
             "base_sub": {
-                "use_fixed": (
-                    lambda: [sub.use_fixed for sub in self.base_sub],
-                    lambda v: self.set_base_sub("use_fixed", v),
-                    {"description": "Toggle the use of a fixed Baseline value for each channel."}
-                ),
-                "fixed": (
-                    lambda: [sub.fixed for sub in self.base_sub],
-                    lambda v: self.set_base_sub("fixed", v),
-                    {"description": "Fixed values for each channel's Baseline Subtraction"}
-                ),
-                "error_limit": (
-                    lambda: [sub.error_limit for sub in self.base_sub],
-                    lambda v: self.set_base_sub("error_limit", v),
-                    {"description": "Baseline Subtraction Error Limit for each channel"}
-                ),
-                "div_cont": (
-                    lambda: [MIN_DIV_CONT * (2 ** sub.div_cont) for sub in self.base_sub],
-                    lambda v: self.set_base_sub("div_cont", v),
-                    {"description": "Division Count for each channel's Baseline Subtraction"}
-                )
+                f"channel_{i}": {
+                    "use_fixed": (
+                        lambda i=i: self.channels[i].base_sub.use_fixed,
+                        lambda v, i=i: self.channels[i].set_base_sub("use_fixed", v),
+                        {"description": "Toggle the use of a fixed Base Subtraction Value"}
+                    ),
+                    "fixed": (
+                        lambda i=i: self.channels[i].base_sub.fixed,
+                        lambda v, i=i: self.channels[i].set_base_sub("fixed", v),
+                        {"description": "Fixed Base Subtraction Value",
+                         "min": BSUB_MIN_FIXED, "max": BSUB_MAX_FIXED}
+                    ),
+                    "error_limit": (
+                        lambda i=i: self.channels[i].base_sub.error_limit,
+                        lambda v, i=i: self.channels[i].set_base_sub("error_limit", v),
+                        {"description": "Base Subtraction Error Limit",
+                         "min": 0, "max": BSUB_MAX_ERROR}
+                    ),
+                    "div_cont": (
+                        lambda i=i: MIN_DIV_CONT * (2 ** self.channels[i].base_sub.div_cont),
+                        lambda v, i=i: self.channels[i].set_base_sub(
+                            "div_cont", int(log2(v / MIN_DIV_CONT))),
+                        {"description": "Division Count for Base Subtraction",
+                         "allowed_values": self.DIV_CONT_ALLOWED}
+                    )
+                }
+                for i in range(len(self.channels))
             },
             "filter": {
-                "type": (
-                    lambda: [filt.filt_type.name.lower() for filt in self.filter],
-                    None,
-                    {"description": "Type of filter used for each channel"}
-                ),
-                "arg_1": (
-                    lambda: [filt.iarg1 for filt in self.filter],
-                    None,
-                    {"description": "First Argument for each channel filter. "
-                                    "Exact use depends of filter type"}
-                ),
-                "arg_2": (
-                    lambda: [filt.iarg2 for filt in self.filter],
-                    None,
-                    {"description": "Second Argument for each channel filter. "
-                                    "Exact use depends of filter type"}
-                ),
-                "arg_3": (
-                    lambda: [filt.darg for filt in self.filter],
-                    None,
-                    {"description": "Float Argument for each channel filter. "
-                                    "Exact use depends of filter type"}
-                )
+                # TODO: Instead of using the Filter Struct iargs etc,
+                # setup the actual params for each filter?
+                f"channel_{i}": {
+                    "type": (
+                        lambda i=i: self.channels[i].filter.filt_type.name.lower(),
+                        lambda v, i=i: self.channels[i].set_filter("type", FilterType[v.upper()]),
+                        {"description": "Type of Filter",
+                         "allowed_values": [e.name.lower() for e in FilterType
+                                            if e.name not in ["UNKNOWN", "CUSTOM"]]}
+                    ),
+                    "arg_1": (
+                        lambda i=i: self.channels[i].filter.iarg1,
+                        lambda v, i=i: self.channels[i].set_filter("arg1", v),
+                        {"description": ("First integer filter argument. "
+                                         "Exact use is dependant on type of filter")}
+                    ),
+                    "arg_2": (
+                        lambda i=i: self.channels[i].filter.iarg2,
+                        lambda v, i=i: self.channels[i].set_filter("arg2", v),
+                        {"description": ("Second integer filter argument. "
+                                         "Exact use is dependant on type of filter")}
+                    ),
+                    "arg_float": (
+                        lambda i=i: self.channels[i].filter.darg,
+                        lambda v, i=i: self.channels[i].set_filter("darg", v),
+                        {"description": ("Float filter argument. "
+                                         "Exact use is dependant on type of filter")}
+                    )
+                }
+                for i in range(len(self.channels))
             },
             "discrimination": {
-                "height_min": (
-                    lambda: [measure.min_height for measure in self.tail_measure],
-                    None,
-                    {"description": "Minimum Discrimination Height"}
-                ),
-                "height_max": (
-                    lambda: [measure.max_height for measure in self.tail_measure],
-                    None,
-                    {"description": "Maximum Discrimination Height"}
-                ),
-                "adaptive": (
-                    lambda: [measure.adaptive_tail_sum for measure in self.tail_measure],
-                    None,
-                    {"description": "Toggle Adaptive Tail Sum"}
-                ),
-                "enable_tail_sum": (
-                    lambda: [not measure.ignore_tail_sum for measure in self.tail_measure],
-                    None,
-                    {"description": "Use Tail Sum measurement in Discrimination"}
-                ),
-                "enable_fall_time": (
-                    lambda: [not measure.ignore_fall_time for measure in self.tail_measure],
-                    None,
-                    {"description": "Use Fall Time measurement in Discrimination"}
-                ),
-                "min_fall": (
-                    lambda: [measure.min_fall for measure in self.tail_measure],
-                    None,
-                    {"description": "Minimum Fall Time"}
-                ),
-                "max_fall": (
-                    lambda: [measure.max_fall for measure in self.tail_measure],
-                    None,
-                    {"description": "Maximum Fall Time"}
-                ),
-                "min_count": (
-                    lambda: [measure.min_count for measure in self.tail_measure],
-                    None,
-                    {"description": "Minimum Tail Count"}
-                ),
-                "thres_c": (
-                    lambda: [measure.tail_thres_c for measure in self.tail_measure],
-                    None,
-                    {"description": "Tail Threshold C"}
-                ),
-                "thres_m": (
-                    lambda: [measure.tail_thres_m for measure in self.tail_measure],
-                    None,
-                    {"description": "Tail Threshold M"}
-                )
+                f"channel_{i}": {
+                    "height_min": (
+                        lambda i=i: self.channels[i].tail_measure.min_height,
+                        lambda v, i=i: self.channels[i].set_tail_measure("min_height", v),
+                        {"description": "Minimum Discrimination Height",
+                         "min": 0, "max": MEASURE_MAX_HEIGHT}
+                    ),
+                    "height_max": (
+                        lambda i=i: self.channels[i].tail_measure.max_height,
+                        lambda v, i=i: self.channels[i].set_tail_measure("max_height", v),
+                        {"description": "Maximum Discrimination Height",
+                         "min": 0, "max": MEASURE_MAX_HEIGHT}
+                    ),
+                    "adaptive": (
+                        lambda i=i: self.channels[i].tail_measure.adaptive_tail_sum,
+                        lambda v, i=i: self.channels[i].set_tail_measure("enb_adaptive_sum", v),
+                        {"description": "Toggle the Adaptive Tail Sum"}
+                    ),
+                    "enable_tail_sum": (
+                        lambda i=i: not self.channels[i].tail_measure.ignore_tail_sum,
+                        lambda v, i=i: self.channels[i].set_tail_measure("enb_tail_sum", v),
+                        {"description": "Toggle the use of the Tail sum in the discrimination"}
+                    ),
+                    "enable_fall_time": (
+                        lambda i=i: self.channels[i].tail_measure.ignore_fall_time,
+                        lambda v, i=i: self.channels[i].set_tail_measure("enb_fall_time", v),
+                        {"description": "Toggle the use of the Fall Time in the discrimination"}
+                    ),
+                    "min_fall": (
+                        lambda i=i: self.channels[i].tail_measure.min_fall,
+                        lambda v, i=i: self.channels[i].set_tail_measure("min_fall", v),
+                        {"description": "Minimum Fall Time",
+                         "min": 0, "max": MEASURE_MAX_FALL_TIME}
+                    ),
+                    "max_fall": (
+                        lambda i=i: self.channels[i].tail_measure.max_fall,
+                        lambda v, i=i: self.channels[i].set_tail_measure("max_fall", v),
+                        {"description": "Maximum Fall Time",
+                         "min": 0, "max": MEASURE_MAX_FALL_TIME}
+                    ),
+                    "min_count": (
+                        lambda i=i: self.channels[i].tail_measure.min_count,
+                        lambda v, i=i: self.channels[i].set_tail_measure("min_count", v),
+                        {"description": "Minimum Fall Time",
+                         "min": 0, "max": MEASURE_MAX_TAIL_COUNT}
+                    ),
+                    "threshold_c": (
+                        lambda i=i: self.channels[i].tail_measure.tail_thres_c,
+                        lambda v, i=i: self.channels[i].set_tail_measure("thres_c", v),
+                        {"description": "C parameter for threshold calculation",
+                         "min": -0x4000000, "max": 0x4000000-1}  # TODO: set up as consts in PyNgpd
+                    ),
+                    "threshold_m": (
+                        lambda i=i: self.channels[i].tail_measure.tail_thres_m,
+                        lambda v, i=i: self.channels[i].set_tail_measure("thres_m", v),
+                        {"description": "M parameter for threshold calculation",
+                         "min": 0}
+                    )
+                }
+                for i in range(len(self.channels))
             },
             "tail_measure": {
-                # lambdas in dict comprehension have scoping issues, so the index
-                # is getting set as a default argument to bind it per channel
                 f"channel_{i}": {
                     "delay": (
-                        lambda i=i: self.tail_measure[i].tail_sum_delay,
-                        lambda v, i=i: self.set_tail_measure(i, "delay", v),
+                        lambda i=i: self.channels[i].tail_measure.tail_sum_delay,
+                        lambda v, i=i: self.channels[i].set_tail_measure("delay", v),
                         {"description": "Tail Sum Delay",
                          "min": 0, "max": MEASURE_MAX_DELAY}
                     ),
                     "num_sample": (
-                        lambda i=i: self.tail_measure[i].tail_sum_sample,
-                        lambda v, i=i: self.set_tail_measure(i, "sample", v),
+                        lambda i=i: self.channels[i].tail_measure.tail_sum_sample,
+                        lambda v, i=i: self.channels[i].set_tail_measure("sample", v),
                         {"description": "Number of samples for Tail Sum measurement",
                          "min": 1, "max": MEASURE_MAX_SUM_NUM}
                     ),
                     "fall_time_frac": (
-                        lambda i=i: self.tail_measure[i].fall_time_frac,
-                        lambda v, i=i: self.set_tail_measure(i, "fall_frac", v),
+                        lambda i=i: self.channels[i].tail_measure.fall_time_frac,
+                        lambda v, i=i: self.channels[i].set_tail_measure("fall_frac", v),
                         {"description": "Ratio for fall time calculation",
                          "min": 0.0, "max": 1.0}
                     ),
                     "enable_tail_subtract": (
-                        lambda i=i: self.tail_measure[i].enable_tail_subtract,
-                        lambda v, i=i: self.set_tail_measure(i, "enb_subtract", v),
+                        lambda i=i: self.channels[i].tail_measure.enable_tail_subtract,
+                        lambda v, i=i: self.channels[i].set_tail_measure("enb_subtract", v),
                         {"description": "Toggle Tail Subtraction"}
                     ),
                     "enable_subtract_test": (
-                        lambda i=i: self.tail_measure[i].enable_subtract_test,
-                        lambda v, i=i: self.set_tail_measure(i, "enb_subtract_test", v),
+                        lambda i=i: self.channels[i].tail_measure.enable_subtract_test,
+                        lambda v, i=i: self.channels[i].set_tail_measure("enb_subtract_test", v),
                         {"description": "Toggle Tail Subtraction Test"}
                     ),
                     "enable_subtract_neutron": (
-                        lambda i=i: self.tail_measure[i].enable_subtract_neutron,
-                        lambda v, i=i: self.set_tail_measure(i, "enb_subtract_neutron", v),
+                        lambda i=i: self.channels[i].tail_measure.enable_subtract_neutron,
+                        lambda v, i=i: self.channels[i].set_tail_measure("enb_subtract_neutron", v),
                         {"description": "Toggle Test Neutron Subtraction"}
                     )
                 }
-                for i in range(len(self.tail_measure))
+                for i in range(len(self.channels))
             }
         }
 
@@ -203,151 +239,8 @@ class NgpdDevice:
         logging.debug("Configuring Ngpd Device")
         self.ngpd = PyNgpd(str(self.ip - 1), self.num_cards, self.dummy_level)
         self.ngpd.setup_run_mode(self.dummy_level & DummyLevel.ADC)
-
-    @property
-    def gain(self):
-        if self.ngpd:
-            self._analog_gain = self.ngpd.read_dga_gain(0, self.ngpd.num_chan)
-        return self._analog_gain
-
-    @UsesNgpdLibrary
-    def set_gain(self, values: list[int]):
-        """Set the Gain for every channel"""
-        for i, val in enumerate(values):
-            if not (0 <= val <= ANALOG_MAX_GAIN):
-                raise NgpdLibException(
-                    f"Invalid value for channel {i} gain. "
-                    f"{val} not between 0 and {ANALOG_MAX_GAIN}"
-                )
-        self.ngpd.write_dga_gain(0, values)
-
-    @property
-    def offset(self):
-        if self.ngpd:
-            self._analog_offset = self.ngpd.read_preamp_offset(0, self.ngpd.num_chan)
-        return self._analog_offset
-
-    @UsesNgpdLibrary
-    def set_offset(self, values: list[int]):
-        for i, val in enumerate(values):
-            if not (0 <= val <= ANALOG_MAX_OFFSET):
-                raise NgpdLibException(
-                    f"Invalid value for channel {i} offset. ",
-                    f"{val} not between 0 and {ANALOG_MAX_OFFSET}"
-                )
-        self.ngpd.write_preamp_offset(0, values)
-
-    @property
-    def base_sub(self):
-        if self.ngpd:
-            for index, base_sub in enumerate(self._base_sub):
-                if base_sub is None:
-                    logging.debug(f"Reading Base Sub Struct for channel {index}")
-                    self._base_sub[index] = self.ngpd.read_basesub(index)
-        return [PyNGPDbassub() if sub is None else sub
-                for sub in self._base_sub]
-
-    @UsesNgpdLibrary
-    def set_base_sub(self, setting: Literal["use_fixed", "fixed", "error_limit", "div_cont"],
-                     values: list[int] | list[bool]):
-
-        subs = self.base_sub
-        if len(subs) != len(values):
-            raise NgpdLibException(
-                f"Incorrect number of values for Base Sub. Expected {len(subs)} got {len(values)}"
-            )
-        if setting == "use_fixed":
-            for i, value in enumerate(values):
-                subs[i].use_fixed = value
-        elif setting == "fixed":
-            for i, value in enumerate(values):
-                if not (BSUB_MIN_FIXED <= value <= BSUB_MAX_FIXED):
-                    raise NgpdLibException(
-                        f"Invalid value for bsub fixed on channel {i}. "
-                        f"{value} is not between {BSUB_MIN_FIXED} and {BSUB_MAX_FIXED}"
-                    )
-                subs[i].fixed = value
-        elif setting == "error_limit":
-            for i, value in enumerate(values):
-                if not (0 <= value <= BSUB_MAX_ERROR):
-                    raise NgpdLibException(
-                        f"Invalid value for bsub error limit on channel {i}. "
-                        f"{value} is not between 0 and {BSUB_MAX_ERROR}"
-                    )
-                subs[i].error_limit = value
-        elif setting == "div_cont":
-            for i, value in enumerate(values):
-                if value not in self.DIV_CONT_ALLOWED:
-                    raise NgpdLibException(
-                        f"Invalid value {value} for bsub Div Count. ",
-                        f"Must be one of {self.DIV_CONT_ALLOWED}"
-                    )
-                subs[i] = int(log2(value / MIN_DIV_CONT))
-
-        for i, bsub in enumerate(subs):
-            self.ngpd.write_basesub(i, bsub)
-
-    @property
-    def filter(self):
-        if self.ngpd:
-            for index, filt in enumerate(self._filter):
-                if filt is None:
-                    logging.debug(f"Reading Filter Struct for channel {index}")
-                    self._filter[index] = self.ngpd.get_filter_type(index)
-        return [PyNGPDFilter() if filt is None else filt
-                for filt in self._filter]
-
-    @property
-    def tail_measure(self):
-        if self.ngpd:
-            for index, measure in enumerate(self._tail_measure):
-                if measure is None:
-                    logging.debug(f"Reading Tail Measure Struct for channel {index}")
-                    self._tail_measure[index] = self.ngpd.read_tail_measure(index)
-        return [PyNGPDTailMeasure() if measure is None else measure
-                for measure in self._tail_measure]
-
-    @UsesNgpdLibrary
-    def set_tail_measure(self, chan: int, setting: TailMeasureSetting, value: int | bool | float):
-
-        measure = self.tail_measure[chan]
-
-        if setting == "delay":
-            measure.tail_sum_delay = value
-        elif setting == "sample":
-            measure.tail_sum_sample = value
-        elif setting == "fall_frac":
-            measure.fall_time_frac = float(value)
-        elif setting == "min_height":
-            measure.min_height = value
-        elif setting == "max_height":
-            measure.max_height = value
-        elif setting == "min_fall":
-            measure.min_fall = value
-        elif setting == "max_fall":
-            measure.max_fall = value
-        elif setting == "min_count":
-            measure.min_count = value
-        elif setting == "enb_adaptive_sum":
-            measure.adaptive_tail_sum = value
-        elif setting == "enb_subtract":
-            measure.enable_tail_subtract = value
-        elif setting == "enb_subtract_test":
-            measure.enable_subtract_test = value
-        elif setting == "enb_subtract_neutron":
-            measure.enable_subtract_neutron = value
-        elif setting == "enb_fall_time":
-            measure.ignore_fall_time = not value
-        elif setting == "enb_tail_sum":
-            measure.ignore_tail_sum = not value
-        elif setting == "thres_c":
-            measure.tail_thres_c = value
-        elif setting == "thres_m":
-            measure.tail_thres_m = value
-        else:
-            raise NgpdLibException(f"Invalid Tail Measure Setting {setting}")
-
-        self.ngpd.write_tail_measure(chan, measure)
+        for channel in self.channels:
+            channel.configure(self.ngpd)
 
     @property
     def adc_temps(self):
@@ -360,3 +253,156 @@ class NgpdDevice:
         if self.ngpd:
             self._preamp_temps = self.ngpd.read_preamp_temp()
         return self._preamp_temps
+
+
+class NgpdChannel:
+
+    def __init__(self, chan_num: int):
+        self.ngpd: PyNgpd = None
+        self.chan = chan_num
+
+        self._analog_gain = -1
+        self._analog_offset = -1
+
+        self._filter: PyNGPDFilter = None
+        self._trigger: PyNGPDDiffTrigger = None
+        self._base_sub: PyNGPDbassub = None
+        self._tail_measure: PyNGPDTailMeasure = None
+
+    def configure(self, ngpd: PyNgpd):
+        self.ngpd = ngpd
+
+    @property
+    def analog_gain(self):
+        if self.ngpd and self._analog_gain < 0:
+            self._analog_gain = self.ngpd.read_dga_gain()[self.chan]
+        return self._analog_gain
+
+    @property
+    def analog_offset(self):
+        if self.ngpd and self._analog_offset < 0:
+            self._analog_offset = self.ngpd.read_preamp_offset()[self.chan]
+        return self._analog_offset
+
+    @UsesNgpdLibrary
+    def set_analog_gain(self, value: int):
+        vals = self.ngpd.read_dga_gain()
+        vals[self.chan] = value
+        self.ngpd.write_dga_gain(0, vals)
+
+    @UsesNgpdLibrary
+    def set_analog_offset(self, value: int):
+        vals = self.ngpd.read_preamp_offset()
+        vals[self.chan] = value
+        self.ngpd.write_preamp_offset(0, vals)
+
+    @property
+    def filter(self):
+        if self.ngpd and self._filter is None:
+            logging.debug(f"Reading Filter Struct for channel {self.chan}")
+            self._filter = self.ngpd.get_filter_type(self.chan)
+        return PyNGPDFilter() if self._filter is None else self._filter
+
+    @property
+    def trigger(self):
+        if self.ngpd and self._trigger is None:
+            logging.debug(f"Reading Trigger Struct for channel {self.chan}")
+            self._trigger = self.ngpd.read_diff_trigger(self.chan)
+        return PyNGPDDiffTrigger() if self._trigger is None else self._trigger
+
+    @property
+    def base_sub(self):
+        if self.ngpd and self._base_sub is None:
+            logging.debug(f"Reading Base Sub Struct for channel {self.chan}")
+            self._base_sub = self.ngpd.read_basesub(self.chan)
+        return PyNGPDbassub() if self._base_sub is None else self._base_sub
+
+    @property
+    def tail_measure(self):
+        if self.ngpd and self._tail_measure is None:
+            logging.debug(f"Reading Base Sub Struct for channel {self.chan}")
+            self._tail_measure = self.ngpd.read_tail_measure(self.chan)
+        return PyNGPDTailMeasure() if self._tail_measure is None else self._tail_measure
+
+    @UsesNgpdLibrary
+    def set_filter(self, setting: FilterSetting, value: int | float | FilterType):
+
+        if setting == "type":
+            self.filter.filt_type = value
+        elif setting == "arg1":
+            self.filter.iarg1 = value
+        elif setting == "arg2":
+            self.filter.iarg2 = value
+        elif setting == "darg":
+            self.filter.darg = value
+        else:
+            raise NgpdLibException(f"Invalid Filter Setting {setting}")
+
+        type = self.filter.filt_type
+        if type == FilterType.RECTANGLE:
+            # TODO: check filter width in appropriate range
+            self.ngpd.filter_load_rect(self.chan, self.filter.iarg1)
+        elif type == FilterType.GAUSSIAN:
+            self.ngpd.filter_load_gaus(self.chan, self.filter.darg)
+        elif type == FilterType.EXPONENTIAL:
+            self.ngpd.filter_load_exp(self.chan, self.filter.darg)
+        elif type == FilterType.TRAPEZOIDAL:
+            self.ngpd.filter_load_trapezoid(self.chan, self.filter.iarg1, self.filter.iarg2)
+        else:
+            raise NgpdLibException(f"Invalid Filter Type {type}")
+
+    @UsesNgpdLibrary
+    def set_trigger(self, setting: TriggerSetting, value: int):
+        if hasattr(self.trigger, setting):
+            setattr(self.trigger, setting, value)
+        else:
+            raise NgpdLibException(f"Invalid Filter Setting {setting}")
+        self.ngpd.write_diff_trigger(self.chan, self.trigger)
+
+    @UsesNgpdLibrary
+    def set_base_sub(self, setting: BaseSubSetting, value: int | bool):
+        if hasattr(self.base_sub, setting):
+            setattr(self.base_sub, setting, value)
+        else:
+            raise NgpdLibException(f"Invalid Base Sub Setting {setting}")
+        self.ngpd.write_basesub(self.chan, self.base_sub)
+
+    @UsesNgpdLibrary
+    def set_tail_measure(self, setting: TailMeasureSetting, value: int | float):
+
+        if setting == "delay":
+            self.tail_measure.tail_sum_delay = value
+        elif setting == "sample":
+            self.tail_measure.tail_sum_sample = value
+        elif setting == "fall_frac":
+            self.tail_measure.fall_time_frac = float(value)
+        elif setting == "min_height":
+            self.tail_measure.min_height = value
+        elif setting == "max_height":
+            self.tail_measure.max_height = value
+        elif setting == "min_fall":
+            self.tail_measure.min_fall = value
+        elif setting == "max_fall":
+            self.tail_measure.max_fall = value
+        elif setting == "min_count":
+            self.tail_measure.min_count = value
+        elif setting == "enb_adaptive_sum":
+            self.tail_measure.adaptive_tail_sum = value
+        elif setting == "enb_subtract":
+            self.tail_measure.enable_tail_subtract = value
+        elif setting == "enb_subtract_test":
+            self.tail_measure.enable_subtract_test = value
+        elif setting == "enb_subtract_neutron":
+            self.tail_measure.enable_subtract_neutron = value
+        elif setting == "enb_fall_time":
+            self.tail_measure.ignore_fall_time = not value
+        elif setting == "enb_tail_sum":
+            self.tail_measure.ignore_tail_sum = not value
+        elif setting == "thres_c":
+            self.tail_measure.tail_thres_c = value
+        elif setting == "thres_m":
+            self.tail_measure.tail_thres_m = value
+        else:
+            raise NgpdLibException(f"Invalid Tail Measure Setting {setting}")
+
+        self.ngpd.write_tail_measure(self.chan, self.tail_measure)

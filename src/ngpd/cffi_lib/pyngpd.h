@@ -7,7 +7,6 @@
 #define NGPD_DIFF_TRIG_MAX_DATA_DELAY        63
 #define NGPD_DIFF_TRIG_MIN_TRIG_DELAY        0
 #define NGPD_DIFF_TRIG_MAX_TRIG_DELAY        63
-#define NGPD_NUM_STRETCHED_TRIG                2
 #define NGPD_DIFF_TRIG_MIN_DELAY_AB            0
 #define NGPD_DIFF_TRIG_MAX_DELAY_AB            31
 #define NGPD_DIFF_TRIG_MIN_TRIG_STRETCH        1

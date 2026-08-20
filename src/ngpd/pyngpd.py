@@ -23,6 +23,19 @@ MEASURE_MAX_HEIGHT = lib.NGPD_MEASURE_HEIGHT_MAX
 MEASURE_MAX_FALL_TIME = lib.NGPD_MEASURE_FALL_TIME_MAX
 MEASURE_MAX_TAIL_COUNT = lib.NGPD_MEASURE_TAIL_COUNT_MAX
 
+TRIG_MIN_SEP = lib.NGPD_DIFF_TRIG_MIN_SEP
+TRIG_MAX_SEP = lib.NGPD_DIFF_TRIG_MAX_SEP
+TRIG_MIN_DATA_DELAY = lib.NGPD_DIFF_TRIG_MIN_DATA_DELAY
+TRIG_MAX_DATA_DELAY = lib.NGPD_DIFF_TRIG_MAX_DATA_DELAY
+TRIG_MIN_TRIG_DELAY = lib.NGPD_DIFF_TRIG_MIN_TRIG_DELAY
+TRIG_MAX_TRIG_DELAY = lib.NGPD_DIFF_TRIG_MAX_TRIG_DELAY
+TRIG_MIN_DELAY_AB = lib.NGPD_DIFF_TRIG_MIN_DELAY_AB
+TRIG_MAX_DELAY_AB = lib.NGPD_DIFF_TRIG_MAX_DELAY_AB
+TRIG_MIN_TRIG_STRETCH = lib.NGPD_DIFF_TRIG_MIN_TRIG_STRETCH
+TRIG_MAX_TRIG_STRETCH = lib.NGPD_DIFF_TRIG_MAX_TRIG_STRETCH
+TRIG_MIN_THRES = lib.NGPD_DIFF_TRIG_MIN_THRES
+TRIG_MAX_THRES = lib.NGPD_DIFF_TRIG_MAX_THRES
+
 
 class DummyLevel(IntEnum):
     """Defines level of Dummy parts to the system, IE how much to simulate"""
@@ -52,56 +65,56 @@ class FilterType(IntEnum):
 @dataclass
 class PyNGPDbassub:
     use_fixed: bool = False
-    fixed: int = 0
-    error_limit: int = 0
+    fixed: int = -1
+    error_limit: int = -1
     div_cont: int = 0
 
 
 @dataclass
 class PyNGPDDiffTrigger:
-    thres: int = 1
-    sep: int = 2
-    data_delay: int = 0
-    trig_delay: int = 0
-    delay_a: int = 0
-    width_a: int = 1
-    delay_b: int = 0
-    width_b: int = 1
+    thres: int = -1
+    sep: int = -1
+    data_delay: int = -1
+    trig_delay: int = -1
+    delay_a: int = -1
+    width_a: int = -1
+    delay_b: int = -1
+    width_b: int = -1
 
 
 @dataclass
 class PyNGPDFilter:
     filt_type: FilterType = FilterType.UNKNOWN
-    iarg1: int = 1
-    iarg2: int = 2
-    darg: float = 1.0
+    iarg1: int = -1
+    iarg2: int = -1
+    darg: float = -1.0
 
 
 @dataclass
 class PyNGPDChanCont:
-    use_pb_start: int = 0
-    data_src: int = 0
-    inv_data: int = 0
+    use_pb_start: int = -1
+    data_src: int = -1
+    inv_data: int = -1
 
 
 @dataclass
 class PyNGPDTailMeasure:
-    tail_sum_delay: int = 0
-    tail_sum_sample: int = 0
-    fall_time_frac: float = 0.0
+    tail_sum_delay: int = -1
+    tail_sum_sample: int = -1
+    fall_time_frac: float = -1.0
     enable_tail_subtract: bool = False
     enable_subtract_test: bool = False
     enable_subtract_neutron: bool = False
-    min_height: int = 0
-    max_height: int = 0
+    min_height: int = -1
+    max_height: int = -1
     adaptive_tail_sum: bool = False
-    min_fall: int = 0
-    max_fall: int = 0
-    min_count: int = 0
+    min_fall: int = -1
+    max_fall: int = -1
+    min_count: int = -1
     ignore_fall_time: bool = False
     ignore_tail_sum: bool = False
-    tail_thres_c: int = 0
-    tail_thres_m: float = 0.0
+    tail_thres_c: int = -1
+    tail_thres_m: float = -1.0
 
 
 class PyNgpd:
@@ -135,7 +148,7 @@ class PyNgpd:
         ret_code = lib.ngpd_i2c_write_preamp_offset(self.path, chan, num, ptr)
         return ret_code
 
-    def read_preamp_offset(self, chan: int, num: int):
+    def read_preamp_offset(self, chan: int = 0, num: int = 8):
         buff = np.zeros((num,), np.uint16)
         ptr = ffi.from_buffer("uint16_t[]", buff)
         ret_code = lib.ngpd_i2c_read_preamp_offset(self.path, chan, num, ptr)
@@ -165,7 +178,7 @@ class PyNgpd:
             logging.error(self.get_error_message())
         return buff.tolist()
 
-    def read_basesub(self, chan) -> PyNGPDbassub:
+    def read_basesub(self, chan):
         c_bsub = ffi.new("NGPDBaseSubtract *")
         rc = lib.ngpd_read_baseline_subtract(self.path, chan, c_bsub)
         if rc < 0:
