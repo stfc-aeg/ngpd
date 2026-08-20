@@ -36,6 +36,15 @@ TRIG_MAX_TRIG_STRETCH = lib.NGPD_DIFF_TRIG_MAX_TRIG_STRETCH
 TRIG_MIN_THRES = lib.NGPD_DIFF_TRIG_MIN_THRES
 TRIG_MAX_THRES = lib.NGPD_DIFF_TRIG_MAX_THRES
 
+VOLTAGE_SIGNAL_NAMES = [
+    ["AVDD3V3_INT_3V9", "AVDD1V_INT_1V3", "AVDD1V8_INT_2V4", "AVDD2V5_INT_3V4", "DVDD1V_INT_1V3",
+     "VDD3V3_CLK_INT_3V9", "VDD1V2_DIG", "VDD3V3_DAE", "VDD1V8_SPI", "AVDD3V3_0", "AVDD3V3_1",
+     "AVDD1V_0", "AVDD1V_1", "VIN_12VA", None, None],
+    ["AVDD2V5_0", "AVDD2V5_1", "DVDD1V_0", "DVDD1V_1", "AVDD1V8_PLL_0", "AVDD1V8_PLL_1",
+     "AVDD1V8_0", "AVDD1V8_1", "VIN_12VB", "VDD3V3_CLK", "VDD5V_I2C", "VMON_INT_OR_2V",
+     "VMON_VTT", "VMON_PSINT_OR_1V2", "VMON_0V9", "VMON_1V2_OR_BAT"]
+]
+
 
 class DummyLevel(IntEnum):
     """Defines level of Dummy parts to the system, IE how much to simulate"""
@@ -116,6 +125,35 @@ class PyNGPDTailMeasure:
     tail_thres_c: int = -1
     tail_thres_m: float = -1.0
 
+@dataclass
+class SystemMonitor:
+    AMS_PSTempLPD: int = -1
+    AMS_PSTempFPD: int = -1
+    AMS_PSVccIntLP: int = -1
+    AMS_PSVccIntFP: int = -1
+    AMS_PSVccAux: int = -1
+    AMS_PSVccDDR: int = -1
+    AMS_PSVccIO0: int = -1
+    AMS_PSVccIO1: int = -1
+    AMS_PSVccIO2: int = -1
+    AMS_PSVccIO3: int = -1
+    AMS_PSAVccMGTR: int = -1
+    AMS_PSAVttMGTR: int = -1
+    AMS_PSVccAMS: int = -1
+    AMS_PSVccPLL0: int = -1
+    AMS_PSVccBatt: int = -1
+    AMS_PLVccInt: int = -1
+    AMS_PLVccBRAM: int = -1
+    AMS_PLVccAux: int = -1
+    AMS_PSVccDDRPLL: int = -1
+    AMS_PSVccIntFPDDR: int = -1
+    XADC_VccInt: int = -1
+    XADC_VccAux: int = -1
+    XADC_VccBRam: int = -1
+    XADC_VccPSInt: int = -1
+    XADC_VccPSAux: int = -1
+    XADC_VccoDdr: int = -1
+    XADC_Temp: int = -1
 
 class PyNgpd:
     """Python class handing all NGPD config and Access"""
@@ -601,25 +639,52 @@ class PyNgpd:
             logging.error(self.get_error_message())
         return buff
 
-    def read_adc_temp(self, card=0) -> list[float]:
+    def read_adc_temp(self, card=0) -> float:
         """Read the temperatures of the ADCs on the specified card"""
-
+        max_temp = -200  # initial value
         temps = ffi.new("float[]", lib.NGZMP_I2C_NUM_ADT7410_ADC)
-        status = ffi.new("int[]", lib.NGZMP_I2C_NUM_ADT7410_ADC)
-        rc = lib.ngpd_i2c_read_adc_temp(self.path, card, temps, status)
+        rc = lib.ngpd_i2c_read_adc_temp(self.path, card, temps, ffi.NULL)
         if rc < 0:
             raise NgpdLibException(self.get_error_message())
-        return [temps[i] for i in range(lib.NGZMP_I2C_NUM_ADT7410_ADC)]
+        for temp in temps:
+            if temp > max_temp:
+                max_temp = temp
+        return max_temp
 
-    def read_preamp_temp(self, card=0) -> list[float]:
+    def read_preamp_temp(self, card=0) -> float:
         """Read the temperatures of the preamps on the specified card"""
-
+        max_temp = -200  # Initial value
         temps = ffi.new("float[]", lib.NGZMP_I2C_NUM_ADT7410_PREAMP)
-        status = ffi.new("int[]", lib.NGZMP_I2C_NUM_ADT7410_PREAMP)
-        rc = lib.ngpd_i2c_read_preamp_temp(self.path, card, temps, status)
+        rc = lib.ngpd_i2c_read_preamp_temp(self.path, card, temps, ffi.NULL)
         if rc < 0:
             raise NgpdLibException(self.get_error_message())
-        return [temps[i] for i in range(lib.NGZMP_I2C_NUM_ADT7410_PREAMP)]
+        for temp in temps:
+            if temp > max_temp:
+                max_temp = temp
+        return max_temp
+
+    def read_adc_voltages(self, card=0) -> dict[str, float]:
+        dict = {}
+        for chip in range(lib.NGZMP_UCD90160_NUM_CHIPS):
+            chip_read = ffi.new("int32_t[]", lib.NGZMP_UCD90160_NUM_RAILS)
+            rc = lib.ngzmp_i2c_read_ucd90160_vout(self.path, card, chip,
+                                                  0, lib.NGZMP_UCD90160_NUM_RAILS, chip_read)
+            if rc < 0:
+                raise NgpdLibException(self.get_error_message())
+            for i, val in enumerate(chip_read):
+                label = VOLTAGE_SIGNAL_NAMES[chip][i]
+                if label:
+                    dict[label] = val * 0.0001  # display as volts rather than millivolts
+        return dict
+
+    def read_fpga_data(self, card=0) -> SystemMonitor:
+        data = ffi.new("int32_t[]", lib.NGZMP_ParamMax)
+        rc = lib.ngzmp_read_xadc(self.path, card, 0, lib.NGZMP_ParamMax, data)
+
+        if rc < 0:
+            raise NgpdLibException(self.get_error_message())
+        monitor = SystemMonitor(*data)
+        return monitor
 
     def cal_offsets(self, first, last, target, num_pass, adjust_only, fname):
         if fname != "":

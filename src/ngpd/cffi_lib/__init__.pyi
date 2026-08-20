@@ -16,10 +16,19 @@ NGZMPClkSrcFPGA: Final[int]
 NGZMPClkSrcLMK61E2: Final[int]
 
 NGZMP_I2C_NUM_ADT7410_ADC: Final[int]
-"""Number of ADT7410 temperature monitor chips on PCB."""
+"""Number of ADT7410 temperature monitor chips for ADCs."""
 
 NGZMP_I2C_NUM_ADT7410_PREAMP: Final[int]
-"""Number of ADT7410 temperature monitor chips on PCB"""
+"""Number of ADT7410 temperature monitor chips for Preamps"""
+
+NGZMP_UCD90160_NUM_RAILS: Final[int]
+"""maximum number of rails supported by UCD90160"""
+
+NGZMP_UCD90160_NUM_CHIPS: Final[int]
+"""maximum number of UCD90160 chips on board"""
+
+NGZMP_ParamMax: Final[int]
+"""Number of FPGA Read Parameters"""
 
 NGPD_MEASURE_TAIL_THRES_SIZE: Final[int]
 
@@ -155,3 +164,11 @@ def ngpd_i2c_read_adc_temp(path: int, card: int, temp: list[float], status: list
 
 def ngpd_i2c_read_preamp_temp(path: int, card: int, temp: list[float], status: list[int]):
     """Read the temperatures from the available sensors on the preamps"""
+
+
+def ngzmp_i2c_read_ucd90160_vout(path: int, card: int, chip: int, page: int, num: int, vout: memoryview):
+    """"""
+
+
+def ngzmp_read_xadc(path: int, card: int, first: int, num: int, data: memoryview) -> int:
+    """"""

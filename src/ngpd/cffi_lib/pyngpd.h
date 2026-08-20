@@ -1,40 +1,42 @@
-#define NGPD_MEASURE_TAIL_THRES_SIZE        256                    //!< Number of values to write to tail thres BRAM
-#define NGPD_MEASURE_TAIL_SUB_SIZE            1024                //!< Number of values to write to each half of tail subtract BRAMs
+#define NGPD_MEASURE_TAIL_THRES_SIZE 256  //!< Number of values to write to tail thres BRAM
+#define NGPD_MEASURE_TAIL_SUB_SIZE   1024 //!< Number of values to write to each half of tail subtract BRAMs
 
-#define NGPD_DIFF_TRIG_MIN_SEP                2
-#define NGPD_DIFF_TRIG_MAX_SEP                65
-#define NGPD_DIFF_TRIG_MIN_DATA_DELAY        0
-#define NGPD_DIFF_TRIG_MAX_DATA_DELAY        63
-#define NGPD_DIFF_TRIG_MIN_TRIG_DELAY        0
-#define NGPD_DIFF_TRIG_MAX_TRIG_DELAY        63
-#define NGPD_DIFF_TRIG_MIN_DELAY_AB            0
-#define NGPD_DIFF_TRIG_MAX_DELAY_AB            31
-#define NGPD_DIFF_TRIG_MIN_TRIG_STRETCH        1
-#define NGPD_DIFF_TRIG_MAX_TRIG_STRETCH        0xFF
-#define NGPD_DIFF_TRIG_MIN_THRES            0
-#define NGPD_DIFF_TRIG_MAX_THRES            0xFFFF
+#define NGPD_DIFF_TRIG_MIN_SEP          2
+#define NGPD_DIFF_TRIG_MAX_SEP          65
+#define NGPD_DIFF_TRIG_MIN_DATA_DELAY   0
+#define NGPD_DIFF_TRIG_MAX_DATA_DELAY   63
+#define NGPD_DIFF_TRIG_MIN_TRIG_DELAY   0
+#define NGPD_DIFF_TRIG_MAX_TRIG_DELAY   63
+#define NGPD_DIFF_TRIG_MIN_DELAY_AB     0
+#define NGPD_DIFF_TRIG_MAX_DELAY_AB     31
+#define NGPD_DIFF_TRIG_MIN_TRIG_STRETCH 1
+#define NGPD_DIFF_TRIG_MAX_TRIG_STRETCH 0xFF
+#define NGPD_DIFF_TRIG_MIN_THRES        0
+#define NGPD_DIFF_TRIG_MAX_THRES        0xFFFF
 
-#define NGPD_MEASURE_SUM_DELAY_MAX             0xFF
-#define NGPD_MEASURE_SUM_NUM_MAX             0xFF
-#define NGPD_MEASURE_HEIGHT_MAX             0xFFFF
-#define NGPD_MEASURE_FALL_TIME_MAX             0xFF
-#define NGPD_MEASURE_TAIL_COUNT_MAX            0xFF
+#define NGPD_MEASURE_SUM_DELAY_MAX  0xFF
+#define NGPD_MEASURE_SUM_NUM_MAX    0xFF
+#define NGPD_MEASURE_HEIGHT_MAX     0xFFFF
+#define NGPD_MEASURE_FALL_TIME_MAX  0xFF
+#define NGPD_MEASURE_TAIL_COUNT_MAX 0xFF
 
+#define NGZMP_UCD90160_NUM_RAILS 16 //!< maximum number of rails supported by UCD90160
+#define NGZMP_UCD90160_NUM_CHIPS 2  //!< maximum number of UCD90160 chips on board
 
-
+#define NGZMP_ParamMax 27 //!< Number of parameters when reading FPGA params
 
 typedef enum {
-    NGPD_RUN_FLAGS_PLAYBACK                = (1<<0),
-    NGPD_RUN_FLAGS_PLAYBACK_ALT            = (2<<0),
-    NGPD_RUN_FLAGS_PLAYBACK_CONTINUOUS    = (1<<2),
-    NGPD_RUN_FLAGS_SCOPEMODE            = (1<<4),
-    NGPD_RUN_FLAGS_SCOPE_MOD_TO_REGS    = (1<<5),
-    NGPD_RUN_FLAGS_SCOPE_REGS_TO_MOD    = (1<<6),
-    NGPD_RUN_FLAGS_SCOPE_OUT_TEST        = (1<<15),
-    NGPD_RUN_FLAGS_SCOPE_OUT_2_STREAM    = (1<<16),
+    NGPD_RUN_FLAGS_PLAYBACK            = (1<<0),
+    NGPD_RUN_FLAGS_PLAYBACK_ALT        = (2<<0),
+    NGPD_RUN_FLAGS_PLAYBACK_CONTINUOUS = (1<<2),
+    NGPD_RUN_FLAGS_SCOPEMODE           = (1<<4),
+    NGPD_RUN_FLAGS_SCOPE_MOD_TO_REGS   = (1<<5),
+    NGPD_RUN_FLAGS_SCOPE_REGS_TO_MOD   = (1<<6),
+    NGPD_RUN_FLAGS_SCOPE_OUT_TEST      = (1<<15),
+    NGPD_RUN_FLAGS_SCOPE_OUT_2_STREAM  = (1<<16),
 
-    NGPD_RUN_FLAGS_DEFAULT                = (NGPD_RUN_FLAGS_SCOPE_OUT_2_STREAM),
-    NGZMP_RUN_FLAGS_DEFAULT                = (0)
+    NGPD_RUN_FLAGS_DEFAULT  = (NGPD_RUN_FLAGS_SCOPE_OUT_2_STREAM),
+    NGZMP_RUN_FLAGS_DEFAULT = (0)
 } NGPDRunFlags;
 
 typedef enum
@@ -265,6 +267,9 @@ NGPDScopeStream ngpd_scope_stream_details_path(int path, int card, int stream, i
 int ngpd_clock_check_locked(int path, int card);
 int ngpd_i2c_read_adc_temp(int path, int card, float *temp, int *status); 
 int ngpd_i2c_read_preamp_temp(int path, int card, float *temp, int *status);
+int ngzmp_i2c_read_ucd90160_vout(int path, int card, int chip, int page, int num,  int32_t* vout);
+int ngzmp_read_xadc(int path, int card, int first, int num, int32_t *data);
+
 
 /* For calibration library */
 /* COMMENTED OUT FOR NOW FOR CFFI BUILD DEBUGGING*/

@@ -49,10 +49,41 @@ class NgpdController(BaseController):
 
         monitoring_tree = {
             "adc": {
-                "temps": (lambda: self.device.adc_temps, None)
+                "temperature": (
+                    lambda: self.device.adc_temp, None,
+                    {"description": "Temperature reading from the ADC board",
+                     "units": "°C"}
+                ),
+                "voltages": (
+                    lambda: self.device.adc_voltages, None,
+                    {"description": "ADC Voltage Signals"}
+                ),
+                "trip_temp": (
+                    lambda: None, lambda: None,
+                    {"description": "Maximum allowed temperature before tripping protection"}
+                )
             },
             "preamp": {
-                "temps": (lambda: self.device.preamp_temps, None)
+                "temperature": (
+                    lambda: self.device.preamp_temp, None,
+                    {"description": "Temperature reading from the Pre-Amp board",
+                     "units": "°C"}
+                ),
+                "trip_temp": (
+                    lambda: None, lambda: None,
+                    {"description": "Maximum allowed temperature before tripping protection"}
+                )
+            },
+            "fpga": {
+                "temperature": (
+                    lambda: max(
+                        self.device.system_monitor.AMS_PSTempLPD,
+                        self.device.system_monitor.AMS_PSTempFPD,
+                        self.device.system_monitor.XADC_Temp) * 0.001,
+                    None,
+                    {"description": "Temperature reading from the FPGA",
+                     "units": "°C"}
+                )
             }
         }
 

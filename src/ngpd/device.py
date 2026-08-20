@@ -1,4 +1,4 @@
-from ngpd.pyngpd import PyNgpd, DummyLevel, FilterType
+from ngpd.pyngpd import PyNgpd, DummyLevel, FilterType, SystemMonitor
 from ngpd.pyngpd import PyNGPDFilter, PyNGPDDiffTrigger, PyNGPDbassub, PyNGPDTailMeasure
 from ngpd.pyngpd import ANALOG_MAX_GAIN, ANALOG_MAX_OFFSET
 from ngpd.pyngpd import BSUB_MAX_ERROR, BSUB_MAX_FIXED, BSUB_MIN_FIXED
@@ -45,11 +45,12 @@ class NgpdDevice:
 
         self.ngpd: PyNgpd = None
 
-        self._adc_temps = [0] * 4
-        self._preamp_temps = [0] * 2
+        self._adc_temp = -1
+        self._preamp_temp = -1
 
-        self._analog_gain = [0] * 8
-        self._analog_offset = [0] * 8
+        self._adc_voltages = {"none": -1}
+
+        self._system_monitor = SystemMonitor()
 
         self.channels = [NgpdChannel(i) for i in range(8)]
 
@@ -161,7 +162,7 @@ class NgpdDevice:
                         {"description": "Toggle the use of the Tail sum in the discrimination"}
                     ),
                     "enable_fall_time": (
-                        lambda i=i: self.channels[i].tail_measure.ignore_fall_time,
+                        lambda i=i: not self.channels[i].tail_measure.ignore_fall_time,
                         lambda v, i=i: self.channels[i].set_tail_measure("ignore_fall_time", not v),
                         {"description": "Toggle the use of the Fall Time in the discrimination"}
                     ),
@@ -301,16 +302,28 @@ class NgpdDevice:
             channel.configure(self.ngpd)
 
     @property
-    def adc_temps(self):
+    def adc_temp(self):
         if self.ngpd:
-            self._adc_temps = self.ngpd.read_adc_temp()
-        return self._adc_temps
+            self._adc_temp = self.ngpd.read_adc_temp()
+        return self._adc_temp
 
     @property
-    def preamp_temps(self):
+    def preamp_temp(self):
         if self.ngpd:
-            self._preamp_temps = self.ngpd.read_preamp_temp()
-        return self._preamp_temps
+            self._preamp_temp = self.ngpd.read_preamp_temp()
+        return self._preamp_temp
+
+    @property
+    def adc_voltages(self):
+        if self.ngpd:
+            self._adc_voltages = self.ngpd.read_adc_voltages()
+        return self._adc_voltages
+
+    @property
+    def system_monitor(self):
+        if self.ngpd:
+            self._system_monitor = self.ngpd.read_fpga_data()
+        return self._system_monitor
 
 
 class NgpdChannel:
