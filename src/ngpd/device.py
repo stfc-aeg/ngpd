@@ -4,7 +4,11 @@ from ngpd.pyngpd import ANALOG_MAX_GAIN, ANALOG_MAX_OFFSET
 from ngpd.pyngpd import BSUB_MAX_ERROR, BSUB_MAX_FIXED, BSUB_MIN_FIXED
 from ngpd.pyngpd import MIN_DIV_CONT, NUM_DIV_CONT
 from ngpd.pyngpd import (MEASURE_MAX_DELAY, MEASURE_MAX_FALL_TIME, MEASURE_MAX_HEIGHT,
-                         MEASURE_MAX_SUM_NUM, MEASURE_MAX_TAIL_COUNT, MEASURE_THRES_SIZE)
+                         MEASURE_MAX_SUM_NUM, MEASURE_MAX_TAIL_COUNT)
+from ngpd.pyngpd import (TRIG_MIN_SEP, TRIG_MAX_SEP, TRIG_MAX_DATA_DELAY, TRIG_MAX_DELAY_AB,
+                         TRIG_MAX_THRES, TRIG_MAX_TRIG_DELAY, TRIG_MAX_TRIG_STRETCH,
+                         TRIG_MIN_DATA_DELAY, TRIG_MIN_DELAY_AB, TRIG_MIN_THRES,
+                         TRIG_MIN_TRIG_DELAY, TRIG_MIN_TRIG_STRETCH)
 from ngpd.util import UsesNgpdLibrary, NgpdLibException
 from ipaddress import ip_address
 from typing import Literal
@@ -230,6 +234,59 @@ class NgpdDevice:
                     )
                 }
                 for i in range(len(self.channels))
+            },
+            "trigger": {
+                f"channel_{i}": {
+                    "threshold": (
+                        lambda i=i: self.channels[i].trigger.thres,
+                        lambda v, i=i: self.channels[i].set_trigger("thres", v),
+                        {"description": "Trigger Threshold",
+                         "min": TRIG_MIN_THRES, "max": TRIG_MAX_THRES}
+                    ),
+                    "separation": (
+                        lambda i=i: self.channels[i].trigger.sep,
+                        lambda v, i=i: self.channels[i].set_trigger("sep", v),
+                        {"description": "Trigger Separation",
+                         "min": TRIG_MIN_SEP, "max": TRIG_MAX_SEP}
+                    ),
+                    "data_delay": (
+                        lambda i=i: self.channels[i].trigger.data_delay,
+                        lambda v, i=i: self.channels[i].set_trigger("data_delay", v),
+                        {"description": "Trigger Data Delay",
+                         "min": TRIG_MIN_DATA_DELAY, "max": TRIG_MAX_DATA_DELAY}
+                    ),
+                    "trig_delay": (
+                        lambda i=i: self.channels[i].trigger.trig_delay,
+                        lambda v, i=i: self.channels[i].set_trigger("trig_delay", v),
+                        {"description": "Trigger Delay",
+                         "min": TRIG_MIN_TRIG_DELAY, "max": TRIG_MAX_TRIG_DELAY}
+                    ),
+                    "delay_a": (
+                        lambda i=i: self.channels[i].trigger.delay_a,
+                        lambda v, i=i: self.channels[i].set_trigger("delay_a", v),
+                        {"description": "Trigger Delay A Parameter",
+                         "min": TRIG_MIN_DELAY_AB, "max": TRIG_MAX_DELAY_AB}
+                    ),
+                    "delay_b": (
+                        lambda i=i: self.channels[i].trigger.delay_b,
+                        lambda v, i=i: self.channels[i].set_trigger("delay_b", v),
+                        {"description": "Trigger Delay B Parameter",
+                         "min": TRIG_MIN_DELAY_AB, "max": TRIG_MAX_DELAY_AB}
+                    ),
+                    "width_a": (
+                        lambda i=i: self.channels[i].trigger.width_a,
+                        lambda v, i=i: self.channels[i].set_trigger("width_a", v),
+                        {"description": "Trigger Width A Parameter",
+                         "min": TRIG_MIN_TRIG_STRETCH, "max": TRIG_MAX_TRIG_STRETCH}
+                    ),
+                    "width_b": (
+                        lambda i=i: self.channels[i].trigger.width_b,
+                        lambda v, i=i: self.channels[i].set_trigger("width_b", v),
+                        {"description": "Trigger Width B Parameter",
+                         "min": TRIG_MIN_TRIG_STRETCH, "max": TRIG_MAX_TRIG_STRETCH}
+                    )
+                }
+                for i in range(len(self.channels))
             }
         }
 
@@ -320,7 +377,7 @@ class NgpdChannel:
     @property
     def tail_measure(self):
         if self.ngpd and self._tail_measure is None:
-            logging.debug(f"Reading Base Sub Struct for channel {self.chan}")
+            logging.debug(f"Reading Tail Measurement Struct for channel {self.chan}")
             self._tail_measure = self.ngpd.read_tail_measure(self.chan)
         return PyNGPDTailMeasure() if self._tail_measure is None else self._tail_measure
 
