@@ -157,6 +157,20 @@ class SystemMonitor:
     XADC_Temp: int = -1
 
 
+@dataclass
+class HistogramConfig:
+    separate_ngp: bool = False
+    enb_hgt_sum: bool = False
+    enb_hgt_fall: bool = False
+    discard_pu: bool = False
+    nbits_height: int = 0
+    shift_height: int = 0
+    nbits_fall_time: int = 0
+    shift_fall_time: int = 0
+    nbits_tail_sum: int = 0
+    shift_tail_sum: int = 0
+
+
 class PyNgpd:
     """Python class handing all NGPD config and Access"""
 
@@ -375,7 +389,7 @@ class PyNgpd:
             logging.error(self.get_error_message())
         return rc
 
-    def write_chan_cont(self, chan, chan_cont):
+    def write_chan_cont(self, chan, chan_cont: PyNGPDChanCont):
         c_chan_cont = ffi.new("NGPDChanCont *")
         c_chan_cont.use_pb_start = chan_cont.use_pb_start
         c_chan_cont.data_src = chan_cont.data_src
@@ -398,21 +412,45 @@ class PyNgpd:
         chan_cont.inv_data = c_chan_cont.inv_data
         return chan_cont
 
-    def write_hist_conf(self, chan, hist_conf):
-        rc = lib.ngzmp_hist_write_chan_config(self.path, chan, hist_conf)
+    def write_hist_conf(self, chan: int, histogram_config: HistogramConfig):
+        c_hist_conf = ffi.new("NGZMPHistConf *")
+
+        c_hist_conf.separate_ngp = int(histogram_config.separate_ngp)
+        c_hist_conf.enb_hgt_sum = int(histogram_config.enb_hgt_sum)
+        c_hist_conf.enb_hgt_fall = int(histogram_config.enb_hgt_fall)
+        c_hist_conf.discard_pu = int(histogram_config.discard_pu)
+        c_hist_conf.nbits_height = histogram_config.nbits_height
+        c_hist_conf.shift_height = histogram_config.shift_height
+        c_hist_conf.nbits_fall_time = histogram_config.nbits_fall_time
+        c_hist_conf.shift_fall_time = histogram_config.shift_fall_time
+        c_hist_conf.nbits_tail_sum = histogram_config.nbits_tail_sum
+        c_hist_conf.shift_tail_sum = histogram_config.shift_tail_sum
+        rc = lib.ngzmp_hist_write_chan_config(self.path, chan, c_hist_conf)
         if rc < 0:
             logging.error(self.get_error_message())
         # self.hist_conf = hist_conf
         return rc
 
-    def read_hist_conf(self, chan):
+    def read_hist_conf(self, chan: int):
         hist_conf = ffi.new("NGZMPHistConf *")
         rc = lib.ngzmp_hist_read_chan_config(self.path, chan, hist_conf)
         if rc < 0:
             logging.error(self.get_error_message())
             return None
 
-        return hist_conf
+        hist_config = HistogramConfig(
+            bool(hist_conf.separate_ngp),
+            bool(hist_conf.enb_hgt_sum),
+            bool(hist_conf.enb_hgt_fall),
+            bool(hist_conf.discard_pu),
+            hist_conf.nbits_height,
+            hist_conf.shift_height,
+            hist_conf.nbits_fall_time,
+            hist_conf.shift_fall_time,
+            hist_conf.nbits_tail_sum,
+            hist_conf.shift_tail_sum
+        )
+        return hist_config
 
     def setup_adc(self):
         rc = lib.ngzmp_adc_setup_adc(self.path, -1, lib.NGZMPADC_Default)
@@ -420,35 +458,20 @@ class PyNgpd:
             logging.error(self.get_error_message())
         lib.ngzmp_adc_read_status(self.path, 0)
 
-    def setup_hist(self, chan, nbits_height, nbits_tail_sum,
-                   shift_height=-1, shift_tail_sum=-1, separate_ngp=-1):
-        new_hist_conf = ffi.new("NGZMPHistConf *")
+    def setup_hist(self, chan: int, hist_conf: HistogramConfig):
+        """
+        Setup the Histogram Config for the specified channel, overwriting some
+        of the values with specific setup
+        """
 
-        new_hist_conf.enb_hgt_sum = 1
-        new_hist_conf.enb_hgt_fall = 0
-        new_hist_conf.discard_pu = 0
-        new_hist_conf.nbits_height = nbits_height
+        hist_conf.enb_hgt_sum = 1
+        hist_conf.enb_hgt_fall = 0
+        hist_conf.discard_pu = 0
 
-        new_hist_conf.nbits_fall_time = 0
-        new_hist_conf.shift_fall_time = 0
-        new_hist_conf.nbits_tail_sum = nbits_tail_sum
+        hist_conf.nbits_fall_time = 0
+        hist_conf.shift_fall_time = 0
 
-        if shift_height == -1:
-            new_hist_conf.shift_height = 16-nbits_height
-        else:
-            new_hist_conf.shift_height = shift_height
-        if shift_tail_sum == -1:
-            new_hist_conf.shift_tail_sum = 19-nbits_tail_sum
-        else:
-            new_hist_conf.shift_tail_sum = shift_tail_sum
-        if separate_ngp == -1:
-            new_hist_conf.separate_ngp = 0
-        else:
-            new_hist_conf.separate_ngp = separate_ngp
-
-        logging.debug("setup_hist: shift_height, shift_tail_sum",
-                      new_hist_conf.shift_height, new_hist_conf.shift_tail_sum)
-        return self.write_hist_conf(chan, new_hist_conf)
+        return self.write_hist_conf(chan, hist_conf)
 
     def setup_run_mode(self, playback_mode: bool):
         chan_cont = PyNGPDChanCont()

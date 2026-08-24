@@ -4,8 +4,8 @@ from functools import partial
 from dataclasses import asdict
 from odin_control.adapters.parameter_tree import ParameterTree, ParameterTreeError
 from odin_control.adapters.base_controller import BaseController, BaseError
-from ngpd.pyngpd import PyNgpd, DummyLevel
-from ngpd.util import UsesNgpdLibrary, NgpdLibException
+from ngpd.pyngpd import DummyLevel
+from ngpd.util import NgpdLibException
 from ngpd.device import NgpdDevice
 
 
@@ -130,15 +130,3 @@ class NgpdController(BaseController):
 
     def set_dummy_level(self, dummy: str):
         self.device.dummy_level = DummyLevel[dummy.upper()]
-
-    def read_adc_temps(self):
-        try:
-            return self.device.read_adc_temps()
-        except NgpdLibException:
-            return self.device.adc_temps
-
-    def read_preamp_temps(self):
-        try:
-            return self.device.read_preamp_temps()
-        except NgpdLibException:
-            return self.device.preamp_temps

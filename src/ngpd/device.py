@@ -1,5 +1,6 @@
 from ngpd.pyngpd import PyNgpd, DummyLevel, FilterType, SystemMonitor
 from ngpd.pyngpd import PyNGPDFilter, PyNGPDDiffTrigger, PyNGPDbassub, PyNGPDTailMeasure
+from ngpd.pyngpd import HistogramConfig
 from ngpd.pyngpd import ANALOG_MAX_GAIN, ANALOG_MAX_OFFSET
 from ngpd.pyngpd import BSUB_MAX_ERROR, BSUB_MAX_FIXED, BSUB_MIN_FIXED
 from ngpd.pyngpd import MIN_DIV_CONT, NUM_DIV_CONT
@@ -13,6 +14,7 @@ from ngpd.util import UsesNgpdLibrary, NgpdLibException
 from ipaddress import ip_address
 from typing import Literal
 from math import log2
+from os import path, listdir
 import logging
 
 TailMeasureSetting = Literal["tail_sum_delay", "tail_sum_sample", "fall_time_frac",
@@ -29,6 +31,10 @@ TriggerSetting = Literal["thres", "sep", "data_delay", "trig_delay",
 
 BaseSubSetting = Literal["use_fixed", "fixed", "error_limit", "div_cont"]
 
+HistogramSetting = Literal["separate_ngp",
+                           "nbits_height", "shift_height",
+                           "nbits_tail_sum", "shift_tail_sum"]
+
 
 class NgpdDevice:
     """
@@ -43,6 +49,20 @@ class NgpdDevice:
         self.num_cards = int(options.get("num_cards", 1))
         self.dummy_level = DummyLevel[options.get("dummy_level", "none").upper()]
 
+        self.playback_file_dir = options.get("playback_dir", "web/config/playback")
+        self.selected_playback = ""
+        self.enable_playback = False
+        self.allowed_playback = [""]
+        if path.exists(self.playback_file_dir) and path.isdir(self.playback_file_dir):
+            self.allowed_playback.extend([
+                f for f in listdir(self.playback_file_dir)
+                if path.isfile(path.join(self.playback_file_dir, f)) and
+                f.endswith(".d16")
+            ])
+        else:
+            logging.warning((f"Path {self.playback_file_dir} either does not exist, "
+                             "is not a directory, or has invalid permissions for access"))
+
         self.ngpd: PyNgpd = None
 
         self._adc_temp = -1
@@ -55,10 +75,15 @@ class NgpdDevice:
         self._preamp_tcrit = -1
 
         self._system_monitor = SystemMonitor()
+        self._hist_config: HistogramConfig = None
 
         self.channels = [NgpdChannel(i) for i in range(8)]
 
         self.tree = {
+            # lambdas in dict comprehension have scoping issues, so the index
+            # is getting set as a default argument (eg: lambda i=i) to bind it per channel.
+            # Without this, all of the channels would affect only the last (channel_7)
+            # this is also why were using the list index rather than iterating over the list itself
             "analog": {
                 f"channel_{i}": {
                     "gain": (
@@ -76,10 +101,6 @@ class NgpdDevice:
                 }
                 for i in range(len(self.channels))
             },
-            # lambdas in dict comprehension have scoping issues, so the index
-            # is getting set as a default argument (eg: lambda i=i) to bind it per channel.
-            # Without this, all of the channels would affect only the last (channel_7)
-            # this is also why were using the list index rather than iterating over the list itself
             "base_sub": {
                 f"channel_{i}": {
                     "use_fixed": (
@@ -293,6 +314,48 @@ class NgpdDevice:
                     )
                 }
                 for i in range(len(self.channels))
+            },
+            "playback": {
+                "enabled": (
+                    lambda: self.enable_playback,
+                    self.set_playback_enable,
+                    {"description": "Enable Playback Mode"}
+                ),
+                "file_name": (
+                    lambda: self.selected_playback,
+                    None,
+                    {"description": "Name of the playback file",
+                     "allowed_values": self.allowed_playback}
+                )
+            },
+            "histogram": {
+                "num_bins_height": (
+                    lambda: 2 ** self.hist_config.nbits_height,
+                    lambda v: self.set_histogram_config("nbits_height", int(log2(v))),
+                    {"description": "Number of Bins to use for Pulse Height",
+                     "allowed_values": [2 ** i for i in range(12)]}
+                ),
+                "num_bins_tailsum": (
+                    lambda: 2 ** self.hist_config.nbits_tail_sum,
+                    lambda v: self.set_histogram_config("nbits_tail_sum", int(log2(v))),
+                    {"description": "Number of Bins to use for Tail Sum",
+                     "allowed_values": [2 ** i for i in range(12)]}
+                ),
+                "shift_height": (
+                    lambda: self.hist_config.shift_height,
+                    lambda v: self.set_histogram_config("shift_height", v),
+                    {"description": "Value to Bitwise Right Shift the Height by"}
+                ),
+                "shift_tailsum": (
+                   lambda: self.hist_config.shift_tail_sum,
+                   lambda v: self.set_histogram_config("shift_tail_sum", v),
+                   {"description": "Value to Bitwise Right Shift the tailsum by"}
+                ),
+                "separate_ngp": (
+                    lambda: self.hist_config.separate_ngp,
+                    lambda v: self.set_histogram_config("separate_ngp", v),
+                    {"description": "Enable separate histograms for Neutron, Gamma, and Pileup"}
+                )
             }
         }
 
@@ -346,6 +409,13 @@ class NgpdDevice:
             self._system_monitor = self.ngpd.read_fpga_data()
         return self._system_monitor
 
+    @property
+    def hist_config(self):
+        if self.ngpd and self._hist_config is None:
+            logging.debug("READING HISTOGRAM CONFIG")
+            self._hist_config = self.ngpd.read_hist_conf(0)
+        return HistogramConfig() if self._hist_config is None else self._hist_config
+
     @UsesNgpdLibrary
     def set_adc_tcrit(self, value: int):
         self._adc_tcrit = value
@@ -355,6 +425,23 @@ class NgpdDevice:
     def set_preamp_tcrit(self, value: int):
         self._preamp_tcrit = value
         self.ngpd.write_preamp_tcrit(value)
+
+    @UsesNgpdLibrary
+    def set_playback_enable(self, value: bool):
+        self.enable_playback = value
+        self.ngpd.setup_run_mode(self.enable_playback)
+
+    @UsesNgpdLibrary
+    def set_playback_file(self, fname: str):
+        self.selected_playback = fname
+        self.ngpd.load_playback(-1, path.join(self.playback_file_dir, fname))
+
+    @UsesNgpdLibrary
+    def set_histogram_config(self, setting: HistogramSetting, value: bool | int):
+        if hasattr(self.hist_config, setting):
+            setattr(self.hist_config, setting, value)
+
+        self.ngpd.setup_hist(-1, self.hist_config)
 
 
 class NgpdChannel:
