@@ -30,6 +30,15 @@ NGZMP_UCD90160_NUM_CHIPS: Final[int]
 NGZMP_ParamMax: Final[int]
 """Number of FPGA Read Parameters"""
 
+NGZMP_I2C_BUS_PMBUS: Final[int]
+"""I2C Power Management Bus for PSU controllers and temperature measurement"""
+
+NGZMP_I2C_BUS_PREAMP: Final[int]
+"""I2C Preamp Bus"""
+
+ADT7410_TCRIT_MSB: Final[int]
+"""I2C Address for ADt7410 temperature monitoring on chip 0"""
+
 NGPD_MEASURE_TAIL_THRES_SIZE: Final[int]
 
 NGPD_MEASURE_SUM_DELAY_MAX: Final[int]
@@ -171,4 +180,16 @@ def ngzmp_i2c_read_ucd90160_vout(path: int, card: int, chip: int, page: int, num
 
 
 def ngzmp_read_xadc(path: int, card: int, first: int, num: int, data: memoryview) -> int:
+    """"""
+
+
+def ngpd_i2c_write_adc_tcrit(path: int, card: int, chip: int, tcrit: int) -> int:
+    """"""
+
+
+def ngpd_i2c_write_preamp_tcrit(path: int, card: int, chip: int, tcrit: int) -> int:
+    """"""
+
+
+def ngzmp_i2c_read_reg_addr(path: int, card: int, bus: int, addr: int, reg_addr: int, size: int, data: memoryview):
     """"""

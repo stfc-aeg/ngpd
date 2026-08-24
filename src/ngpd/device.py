@@ -50,6 +50,10 @@ class NgpdDevice:
 
         self._adc_voltages = {"none": -1}
 
+        # Overtemp trip values
+        self._adc_tcrit = -1
+        self._preamp_tcrit = -1
+
         self._system_monitor = SystemMonitor()
 
         self.channels = [NgpdChannel(i) for i in range(8)]
@@ -314,6 +318,23 @@ class NgpdDevice:
         return self._preamp_temp
 
     @property
+    def adc_tcrit(self):
+        if self.ngpd:
+            tcrit = self.ngpd.read_adc_tcrit()
+            if not tcrit < 0:
+                # read_adc_trcrit returns -1 if we're simulating ADCs (due to Dummy Level)
+                self._adc_tcrit = tcrit
+        return self._adc_tcrit
+
+    @property
+    def preamp_tcrit(self):
+        if self.ngpd:
+            tcrit = self.ngpd.read_preamp_tcrit()
+            if not tcrit < 0:
+                self._preamp_tcrit = tcrit
+        return self._preamp_tcrit
+
+    @property
     def adc_voltages(self):
         if self.ngpd:
             self._adc_voltages = self.ngpd.read_adc_voltages()
@@ -324,6 +345,16 @@ class NgpdDevice:
         if self.ngpd:
             self._system_monitor = self.ngpd.read_fpga_data()
         return self._system_monitor
+
+    @UsesNgpdLibrary
+    def set_adc_tcrit(self, value: int):
+        self._adc_tcrit = value
+        self.ngpd.write_adc_tcrit(value)
+
+    @UsesNgpdLibrary
+    def set_preamp_tcrit(self, value: int):
+        self._preamp_tcrit = value
+        self.ngpd.write_preamp_tcrit(value)
 
 
 class NgpdChannel:
@@ -345,8 +376,9 @@ class NgpdChannel:
 
     @property
     def analog_gain(self):
-        if self.ngpd and self._analog_gain < 0:
-            self._analog_gain = self.ngpd.read_dga_gain()[self.chan]
+        if self.ngpd:
+            vals = self.ngpd.read_dga_gain()
+            self._analog_gain = vals[self.chan]
         return self._analog_gain
 
     @property
@@ -358,13 +390,16 @@ class NgpdChannel:
     @UsesNgpdLibrary
     def set_analog_gain(self, value: int):
         vals = self.ngpd.read_dga_gain()
+        logging.debug(f"ANALOG GAIN VALS: {vals}")
         vals[self.chan] = value
+        self._analog_gain = value
         self.ngpd.write_dga_gain(0, vals)
 
     @UsesNgpdLibrary
     def set_analog_offset(self, value: int):
         vals = self.ngpd.read_preamp_offset()
         vals[self.chan] = value
+        self._analog_offset = value
         self.ngpd.write_preamp_offset(0, vals)
 
     @property

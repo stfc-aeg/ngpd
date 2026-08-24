@@ -25,6 +25,14 @@
 
 #define NGZMP_ParamMax 27 //!< Number of parameters when reading FPGA params
 
+#define NGZMP_I2C_NUM_ADT7410_ADC    4  //!< Number of ADT7410 temperature monitor chips on PCB.
+#define NGZMP_I2C_NUM_ADT7410_PREAMP 2  //!< Number of ADT7410 temperature monitor chips on PCB.
+
+#define NGZMP_I2C_BUS_PMBUS  1  //!< /dev/i2c-1 is the i2c bus to the power management bus for the PSU controllers and temperature measurement.
+#define NGZMP_I2C_BUS_PREAMP 4  //!< /dev/i2c-4 is the i2c bus to the pre-amp
+#define ADT7410_TCRIT_MSB    8
+// #define NGZMP_I2C_ADDR_ADT7410 0x48  //!< I2C Slave address for ADT7410 temperature monitor chips on PCB.
+
 typedef enum {
     NGPD_RUN_FLAGS_PLAYBACK            = (1<<0),
     NGPD_RUN_FLAGS_PLAYBACK_ALT        = (2<<0),
@@ -184,8 +192,7 @@ typedef enum {
     NGPDScopeStream_AuxDigital=4   //!< The data is digital data which is associated with other streams and is often displayed with those streams rather than in its own right.
     } NGPDScopeStream;
 
-#define NGZMP_I2C_NUM_ADT7410_ADC        4            //!< Number of ADT7410 temperature monitor chips on PCB.
-#define NGZMP_I2C_NUM_ADT7410_PREAMP    2            //!< Number of ADT7410 temperature monitor chips on PCB.
+
 
 typedef struct
 {
@@ -270,6 +277,9 @@ int ngpd_i2c_read_preamp_temp(int path, int card, float *temp, int *status);
 int ngzmp_i2c_read_ucd90160_vout(int path, int card, int chip, int page, int num,  int32_t* vout);
 int ngzmp_read_xadc(int path, int card, int first, int num, int32_t *data);
 
+int ngpd_i2c_write_adc_tcrit(int path, int card, int chip, int tcrit);
+int ngpd_i2c_write_preamp_tcrit(int path, int card, int chip, int tcrit);
+int ngzmp_i2c_read_reg_addr(int path, int card, int bus, int addr, int reg_addr, int size, uint8_t* data);
 
 /* For calibration library */
 /* COMMENTED OUT FOR NOW FOR CFFI BUILD DEBUGGING*/

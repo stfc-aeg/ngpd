@@ -2,7 +2,7 @@ from ngpd import cffi_lib as lib
 from ngpd.cffi_lib import ffi
 from ngpd.util import NgpdLibException
 from dataclasses import dataclass
-from enum import IntEnum, auto
+from enum import IntEnum, IntFlag, auto
 import logging
 import numpy as np
 
@@ -46,7 +46,7 @@ VOLTAGE_SIGNAL_NAMES = [
 ]
 
 
-class DummyLevel(IntEnum):
+class DummyLevel(IntFlag):
     """Defines level of Dummy parts to the system, IE how much to simulate"""
     NONE = 0
     """No Simulated parts"""
@@ -125,6 +125,7 @@ class PyNGPDTailMeasure:
     tail_thres_c: int = -1
     tail_thres_m: float = -1.0
 
+
 @dataclass
 class SystemMonitor:
     AMS_PSTempLPD: int = -1
@@ -154,6 +155,7 @@ class SystemMonitor:
     XADC_VccPSAux: int = -1
     XADC_VccoDdr: int = -1
     XADC_Temp: int = -1
+
 
 class PyNgpd:
     """Python class handing all NGPD config and Access"""
@@ -199,6 +201,8 @@ class PyNgpd:
         num = len(values)
         ptr = ffi.new("uint16_t[]", values)
         rc = lib.ngzmp_spi_write_dga(self.path, chan, num, ptr)
+        if rc < 0:
+            logging.error(self.get_error_message())
         return rc
 
     def read_dga_gain(self, chan: int = 0, num: int = 8):
@@ -641,27 +645,19 @@ class PyNgpd:
 
     def read_adc_temp(self, card=0) -> float:
         """Read the temperatures of the ADCs on the specified card"""
-        max_temp = -200  # initial value
         temps = ffi.new("float[]", lib.NGZMP_I2C_NUM_ADT7410_ADC)
         rc = lib.ngpd_i2c_read_adc_temp(self.path, card, temps, ffi.NULL)
         if rc < 0:
             raise NgpdLibException(self.get_error_message())
-        for temp in temps:
-            if temp > max_temp:
-                max_temp = temp
-        return max_temp
+        return max(temps)
 
     def read_preamp_temp(self, card=0) -> float:
         """Read the temperatures of the preamps on the specified card"""
-        max_temp = -200  # Initial value
         temps = ffi.new("float[]", lib.NGZMP_I2C_NUM_ADT7410_PREAMP)
         rc = lib.ngpd_i2c_read_preamp_temp(self.path, card, temps, ffi.NULL)
         if rc < 0:
             raise NgpdLibException(self.get_error_message())
-        for temp in temps:
-            if temp > max_temp:
-                max_temp = temp
-        return max_temp
+        return max(temps)
 
     def read_adc_voltages(self, card=0) -> dict[str, float]:
         dict = {}
@@ -685,6 +681,47 @@ class PyNgpd:
             raise NgpdLibException(self.get_error_message())
         monitor = SystemMonitor(*data)
         return monitor
+
+    def read_adc_tcrit(self, card=0) -> int:
+        if self.dummy & DummyLevel.ADC:
+            # we're simulating the ADCs so can't actually read the value
+            return -1
+        data = ffi.new("uint8_t[]", 2)
+        rc = lib.ngzmp_i2c_read_reg_addr(self.path, card,
+                                         lib.NGZMP_I2C_BUS_PMBUS,
+                                         0x48,  # HARDCODING FOR NOW CAUSE #DEFINE FUNC NOT WORK WITH CFFi
+                                         lib.ADT7410_TCRIT_MSB, 2, data)
+        if rc < 0:
+            raise NgpdLibException(self.get_error_message())
+        tcrit = (data[0] << 8) | data[1]
+        return int(tcrit / 128)
+
+    def read_preamp_tcrit(self, card=0) -> int:
+        if self.dummy & DummyLevel.PREAMP:
+            # we're simulating the preamps so can't actually read the value.
+            return -1
+        data = ffi.new("uint8_t[]", 2)
+        rc = lib.ngzmp_i2c_read_reg_addr(self.path, card,
+                                         lib.NGZMP_I2C_BUS_PREAMP,
+                                         0x48,
+                                         lib.ADT7410_TCRIT_MSB, 2, data)
+        if rc < 0:
+            raise NgpdLibException(self.get_error_message())
+        tcrit = (data[0] << 8) | [data[1]]
+        return int(tcrit / 128)
+
+    def write_adc_tcrit(self, value: int, card=0) -> int:
+
+        rc = lib.ngpd_i2c_write_adc_tcrit(self.path, card, -1, value)
+        if rc < 0:
+            raise NgpdLibException(self.get_error_message())
+        return rc
+
+    def write_preamp_tcrit(self, value: int, card=0) -> int:
+        rc = lib.ngpd_i2c_write_preamp_tcrit(self.path, card, -1, value)
+        if rc < 0:
+            raise NgpdLibException(self.get_error_message())
+        return rc
 
     def cal_offsets(self, first, last, target, num_pass, adjust_only, fname):
         if fname != "":

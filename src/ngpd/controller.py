@@ -1,6 +1,7 @@
 import logging
 from ipaddress import ip_address
 from functools import partial
+from dataclasses import asdict
 from odin_control.adapters.parameter_tree import ParameterTree, ParameterTreeError
 from odin_control.adapters.base_controller import BaseController, BaseError
 from ngpd.pyngpd import PyNgpd, DummyLevel
@@ -59,7 +60,8 @@ class NgpdController(BaseController):
                     {"description": "ADC Voltage Signals"}
                 ),
                 "trip_temp": (
-                    lambda: None, lambda: None,
+                    lambda: self.device.adc_tcrit,
+                    lambda v: self.device.set_adc_tcrit(v),
                     {"description": "Maximum allowed temperature before tripping protection"}
                 )
             },
@@ -70,7 +72,8 @@ class NgpdController(BaseController):
                      "units": "°C"}
                 ),
                 "trip_temp": (
-                    lambda: None, lambda: None,
+                    lambda: self.device.preamp_tcrit,
+                    lambda v: self.device.set_preamp_tcrit(v),
                     {"description": "Maximum allowed temperature before tripping protection"}
                 )
             },
@@ -83,6 +86,12 @@ class NgpdController(BaseController):
                     None,
                     {"description": "Temperature reading from the FPGA",
                      "units": "°C"}
+                ),
+                "voltages": (
+                    lambda: {key: val * 0.0001 for key, val in asdict(self.device.system_monitor).items()
+                             if key not in ["AMS_PSTempLPD", "AMS_PSTempFPD", "XADC_Temp"]},
+                    None,
+                    {"description": "Dictionary of voltages on the FPGA"}
                 )
             }
         }
