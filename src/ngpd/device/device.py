@@ -1,12 +1,12 @@
-from ngpd.pyngpd import PyNgpd, DummyLevel, FilterType, SystemMonitor
-from ngpd.pyngpd import PyNGPDFilter, PyNGPDDiffTrigger, PyNGPDbassub, PyNGPDTailMeasure
-from ngpd.pyngpd import HistogramConfig
-from ngpd.pyngpd import ANALOG_MAX_GAIN, ANALOG_MAX_OFFSET
-from ngpd.pyngpd import BSUB_MAX_ERROR, BSUB_MAX_FIXED, BSUB_MIN_FIXED
-from ngpd.pyngpd import MIN_DIV_CONT, NUM_DIV_CONT
-from ngpd.pyngpd import (MEASURE_MAX_DELAY, MEASURE_MAX_FALL_TIME, MEASURE_MAX_HEIGHT,
+from ngpd.device.pyngpd import PyNgpd, DummyLevel, FilterType, SystemMonitor
+from ngpd.device.pyngpd import PyNGPDFilter, PyNGPDDiffTrigger, PyNGPDbassub, PyNGPDTailMeasure
+from ngpd.device.pyngpd import HistogramConfig
+from ngpd.device.pyngpd import ANALOG_MAX_GAIN, ANALOG_MAX_OFFSET
+from ngpd.device.pyngpd import BSUB_MAX_ERROR, BSUB_MAX_FIXED, BSUB_MIN_FIXED
+from ngpd.device.pyngpd import MIN_DIV_CONT, NUM_DIV_CONT
+from ngpd.device.pyngpd import (MEASURE_MAX_DELAY, MEASURE_MAX_FALL_TIME, MEASURE_MAX_HEIGHT,
                          MEASURE_MAX_SUM_NUM, MEASURE_MAX_TAIL_COUNT)
-from ngpd.pyngpd import (TRIG_MIN_SEP, TRIG_MAX_SEP, TRIG_MAX_DATA_DELAY, TRIG_MAX_DELAY_AB,
+from ngpd.device.pyngpd import (TRIG_MIN_SEP, TRIG_MAX_SEP, TRIG_MAX_DATA_DELAY, TRIG_MAX_DELAY_AB,
                          TRIG_MAX_THRES, TRIG_MAX_TRIG_DELAY, TRIG_MAX_TRIG_STRETCH,
                          TRIG_MIN_DATA_DELAY, TRIG_MIN_DELAY_AB, TRIG_MIN_THRES,
                          TRIG_MIN_TRIG_DELAY, TRIG_MIN_TRIG_STRETCH)

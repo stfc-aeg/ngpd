@@ -4,7 +4,7 @@ from functools import partial
 from dataclasses import asdict
 from odin_control.adapters.parameter_tree import ParameterTree, ParameterTreeError
 from odin_control.adapters.base_controller import BaseController, BaseError
-from ngpd.pyngpd import DummyLevel
+from ngpd.device.pyngpd import DummyLevel
 from ngpd.util import NgpdLibException
 from ngpd.device import NgpdDevice
 
@@ -94,6 +94,15 @@ class NgpdController(BaseController):
                     {"description": "Dictionary of voltages on the FPGA"}
                 )
             }
+        }
+
+        acquisition_tree = {
+            "num_cycles": None,
+            "frame_length": None,
+            "scope_setup": None,
+            "scope_run": None,
+            "run": None,
+            "state": None
         }
 
         self.param_tree = ParameterTree({

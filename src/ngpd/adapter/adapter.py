@@ -1,6 +1,6 @@
 from odin_control.adapters.adapter import ApiAdapter
-from .controller import NgpdController, NgpdError
-from ._version import __version__
+from ngpd.adapter.controller import NgpdController, NgpdError
+from .._version import __version__
 
 
 class NgpdAdapter(ApiAdapter):
