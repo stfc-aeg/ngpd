@@ -107,3 +107,7 @@ tags
 site/
 
 .copier-answers.yml
+
+*.d16
+*.hdf5
+*.h5

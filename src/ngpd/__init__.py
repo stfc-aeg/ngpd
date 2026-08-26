@@ -1,1 +1,1 @@
-"""NGPD Main Module"""
+"""NGPD Main Module."""

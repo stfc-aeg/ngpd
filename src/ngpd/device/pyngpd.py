@@ -1,10 +1,18 @@
+"""PyNGPD Class Module.
+
+Contains the Main PyNGPD Class for library access, and dataclasses to replicate the various C structs from the library.
+"""
+
+import logging
+from dataclasses import dataclass
+from enum import IntEnum, IntFlag, auto
+from typing import Literal
+
+import numpy as np
+
 from ngpd import cffi_lib as lib
 from ngpd.cffi_lib import ffi
 from ngpd.util import NgpdLibException
-from dataclasses import dataclass
-from enum import IntEnum, IntFlag, auto
-import logging
-import numpy as np
 
 ANALOG_MAX_GAIN = 35
 ANALOG_MAX_OFFSET = 65535
@@ -37,17 +45,49 @@ TRIG_MIN_THRES = lib.NGPD_DIFF_TRIG_MIN_THRES
 TRIG_MAX_THRES = lib.NGPD_DIFF_TRIG_MAX_THRES
 
 VOLTAGE_SIGNAL_NAMES = [
-    ["AVDD3V3_INT_3V9", "AVDD1V_INT_1V3", "AVDD1V8_INT_2V4", "AVDD2V5_INT_3V4", "DVDD1V_INT_1V3",
-     "VDD3V3_CLK_INT_3V9", "VDD1V2_DIG", "VDD3V3_DAE", "VDD1V8_SPI", "AVDD3V3_0", "AVDD3V3_1",
-     "AVDD1V_0", "AVDD1V_1", "VIN_12VA", None, None],
-    ["AVDD2V5_0", "AVDD2V5_1", "DVDD1V_0", "DVDD1V_1", "AVDD1V8_PLL_0", "AVDD1V8_PLL_1",
-     "AVDD1V8_0", "AVDD1V8_1", "VIN_12VB", "VDD3V3_CLK", "VDD5V_I2C", "VMON_INT_OR_2V",
-     "VMON_VTT", "VMON_PSINT_OR_1V2", "VMON_0V9", "VMON_1V2_OR_BAT"]
+    [
+        "AVDD3V3_INT_3V9",
+        "AVDD1V_INT_1V3",
+        "AVDD1V8_INT_2V4",
+        "AVDD2V5_INT_3V4",
+        "DVDD1V_INT_1V3",
+        "VDD3V3_CLK_INT_3V9",
+        "VDD1V2_DIG",
+        "VDD3V3_DAE",
+        "VDD1V8_SPI",
+        "AVDD3V3_0",
+        "AVDD3V3_1",
+        "AVDD1V_0",
+        "AVDD1V_1",
+        "VIN_12VA",
+        None,
+        None,
+    ],
+    [
+        "AVDD2V5_0",
+        "AVDD2V5_1",
+        "DVDD1V_0",
+        "DVDD1V_1",
+        "AVDD1V8_PLL_0",
+        "AVDD1V8_PLL_1",
+        "AVDD1V8_0",
+        "AVDD1V8_1",
+        "VIN_12VB",
+        "VDD3V3_CLK",
+        "VDD5V_I2C",
+        "VMON_INT_OR_2V",
+        "VMON_VTT",
+        "VMON_PSINT_OR_1V2",
+        "VMON_0V9",
+        "VMON_1V2_OR_BAT",
+    ],
 ]
 
+ITFG_State = Literal["error, paused, counting, not_counting, idle"]
 
 class DummyLevel(IntFlag):
-    """Defines level of Dummy parts to the system, IE how much to simulate"""
+    """Defines level of Dummy parts to the system, IE how much to simulate."""
+
     NONE = 0
     """No Simulated parts"""
     FPGA = 1
@@ -62,7 +102,23 @@ class DummyLevel(IntFlag):
     """Simulate Everything"""
 
 
+class ScopeStatus(IntFlag):
+    """Enum for Scope Status."""
+
+    RUNNING = auto()
+    OUT_RUNNING = auto()
+    OUT_PAUSED = auto()
+    ITFG_RUNNING = auto()
+    ITFG_WAITING = auto()
+    ITFG_COUNTING = auto()
+
+    ERROR = 0
+
+
+
 class FilterType(IntEnum):
+    """Enum for Filter Type, replcating C Library's Enum."""
+
     UNKNOWN = 0
     RECTANGLE = auto()
     GAUSSIAN = auto()
@@ -73,6 +129,8 @@ class FilterType(IntEnum):
 
 @dataclass
 class PyNGPDbassub:
+    """Base Subtraction Struct."""
+
     use_fixed: bool = False
     fixed: int = -1
     error_limit: int = -1
@@ -81,6 +139,8 @@ class PyNGPDbassub:
 
 @dataclass
 class PyNGPDDiffTrigger:
+    """Differential Trigger Struct."""
+
     thres: int = -1
     sep: int = -1
     data_delay: int = -1
@@ -93,6 +153,8 @@ class PyNGPDDiffTrigger:
 
 @dataclass
 class PyNGPDFilter:
+    """Filter Struct."""
+
     filt_type: FilterType = FilterType.UNKNOWN
     iarg1: int = -1
     iarg2: int = -1
@@ -101,6 +163,8 @@ class PyNGPDFilter:
 
 @dataclass
 class PyNGPDChanCont:
+    """Channel Config Struct."""
+
     use_pb_start: int = -1
     data_src: int = -1
     inv_data: int = -1
@@ -108,6 +172,8 @@ class PyNGPDChanCont:
 
 @dataclass
 class PyNGPDTailMeasure:
+    """Tail Measurement Struct."""
+
     tail_sum_delay: int = -1
     tail_sum_sample: int = -1
     fall_time_frac: float = -1.0
@@ -128,6 +194,8 @@ class PyNGPDTailMeasure:
 
 @dataclass
 class SystemMonitor:
+    """FPGA System Information Dataclass."""
+
     AMS_PSTempLPD: int = -1
     AMS_PSTempFPD: int = -1
     AMS_PSVccIntLP: int = -1
@@ -159,6 +227,8 @@ class SystemMonitor:
 
 @dataclass
 class HistogramConfig:
+    """Histogram Configuration Struct."""
+
     separate_ngp: bool = False
     enb_hgt_sum: bool = False
     enb_hgt_fall: bool = False
@@ -171,38 +241,69 @@ class HistogramConfig:
     shift_tail_sum: int = 0
 
 
+@dataclass
+class ITFGStatus:
+    """ITFG Status Struct."""
+
+    flags: ScopeStatus = ScopeStatus.ERROR
+    cycles: int = -1
+    timer_us: int = -1
+
+
+@dataclass
+class ITFGSetup:
+    """ITFG Setup Struct."""
+
+    col_time: float
+    trig_mode: int
+    cycles: int
+
+
 class PyNgpd:
-    """Python class handing all NGPD config and Access"""
+    """Python class handing all NGPD config and Access."""
 
     def __init__(self, ipaddr: str, num_cards=1, dummy=DummyLevel.NONE, first_card=0):
+        """Create a Python class to interface with the NGPD system via the CFFI Library.
+
+        :param ipaddr: The IP Address of the NGPD System. In a multi-card system, this should be the address of the first card.
+        :param num_cards: The Number of cards in the system.
+        :param nummy: The Dummy Level for the system. Defines which parts, if any, the library should "simulate".
+        :param first_card: The index of the first card in the NGPD System.
+        """
         self.num_cards = num_cards
         self.first_crad = first_card
         self.dummy = dummy
         c_ip_addr = ffi.new("char[]", ipaddr.encode())
 
-        self.path = lib.ngpd_config_ngzmp(num_cards, c_ip_addr, -1, ffi.NULL, -1, 0,
-                                          first_card, 0, dummy)
+        self.path = lib.ngpd_config_ngzmp(
+            num_cards, c_ip_addr, -1, ffi.NULL, -1, 0, first_card, 0, dummy
+        )
 
         if self.path < 0:
             raise NgpdLibException("Cannot open path to NGPD Board")
 
         self.num_chan = lib.ngpd_get_num_chan(self.path)
-        self.itfg_setup = ffi.new("NGPDITFGSetup *")
-        self.itfg_setup.col_time = 1
-        self.itfg_setup.trig_mode = lib.NGPDTrigSW
-        self.itfg_setup.cycles = 1
+        self.itfg_setup = ITFGSetup(1, lib.NGPDTrigSW, 1)
+
         logging.debug("Completed NGPD Init")
 
     def get_error_message(self) -> str:
+        """Get the Error message from the cffi Library."""
         return str(ffi.string(lib.ngpd_get_error_message()))
 
     def write_preamp_offset(self, chan: int, values: list[int]):
+        """Write the offsets to the various channel's Preamps.
+
+        :param chan: First channel in the list to write the offset for.
+        :param values: Array of Offset values to write.
+        """
         num = len(values)
         ptr = ffi.new("uint16_t[]", values)
         ret_code = lib.ngpd_i2c_write_preamp_offset(self.path, chan, num, ptr)
         return ret_code
 
     def read_preamp_offset(self, chan: int = 0, num: int = 8):
+        """Read the list of Preamp Offsets."""
         buff = np.zeros((num,), np.uint16)
         ptr = ffi.from_buffer("uint16_t[]", buff)
         ret_code = lib.ngpd_i2c_read_preamp_offset(self.path, chan, num, ptr)
@@ -220,13 +321,12 @@ class PyNgpd:
         return rc
 
     def read_dga_gain(self, chan: int = 0, num: int = 8):
-        """
-        Read the Analog Gain for each selected channel
+        """Read the Analog Gain for each selected channel.
 
         :param chan: the first channel in the returned list
         :param num: the number of channels to return
         """
-        buff = np.zeros((num, ), np.uint16)
+        buff = np.zeros((num,), np.uint16)
         # ptr = ffi.cast("uint16_t *", ffi.from_buffer(buff))
         ptr = ffi.from_buffer("uint16_t[]", buff)
         rc = lib.ngzmp_spi_read_dga(self.path, chan, num, ptr)
@@ -269,14 +369,16 @@ class PyNgpd:
             bool(c_measure.enable_tail_subtract),
             bool(c_measure.tail_subtract_test),
             bool(c_measure.tail_subtract_test_neutron),
-            c_measure.min_height, c_measure.max_height,
+            c_measure.min_height,
+            c_measure.max_height,
             bool(c_measure.adaptive_tail_sum),
-            c_measure.min_fall_time, c_measure.max_fall_time,
+            c_measure.min_fall_time,
+            c_measure.max_fall_time,
             c_measure.min_tail_count,
             bool(c_measure.ignore_fall_time),
             bool(c_measure.ignore_tail_sum),
             c_measure.tail_thres_c[0],
-            c_measure.tail_thres_m[0] / 0x800000
+            c_measure.tail_thres_m[0] / 0x800000,
         )
 
         return measure
@@ -448,7 +550,7 @@ class PyNgpd:
             hist_conf.nbits_fall_time,
             hist_conf.shift_fall_time,
             hist_conf.nbits_tail_sum,
-            hist_conf.shift_tail_sum
+            hist_conf.shift_tail_sum,
         )
         return hist_config
 
@@ -477,9 +579,11 @@ class PyNgpd:
         chan_cont = PyNGPDChanCont()
         if playback_mode:
             chan_cont.data_src = lib.NGPDDataSrcPlayback
-            run_flags = (lib.NGPD_RUN_FLAGS_SCOPEMODE |
-                         lib.NGPD_RUN_FLAGS_PLAYBACK |
-                         lib.NGPD_RUN_FLAGS_PLAYBACK_CONTINUOUS)
+            run_flags = (
+                lib.NGPD_RUN_FLAGS_SCOPEMODE
+                | lib.NGPD_RUN_FLAGS_PLAYBACK
+                | lib.NGPD_RUN_FLAGS_PLAYBACK_CONTINUOUS
+            )
             self.setup_clock(lib.NGZMPClkSrcFPGA)
         else:
             chan_cont.data_src = lib.NGPDDataSrcADCFWD
@@ -500,18 +604,24 @@ class PyNgpd:
 
     def clear_hist(self):
         hist_conf = self.read_hist_conf(0)
-        num_words = 1 << (hist_conf.nbits_height+hist_conf.nbits_tail_sum)
+        num_words = 1 << (hist_conf.nbits_height + hist_conf.nbits_tail_sum)
         # num words is measured in AXI bus 256 bit words, rather than histogram uint32_t
-        num_words = int(num_words/8)
+        num_words = int(num_words / 8)
         if hist_conf.separate_ngp:
-            num_words = num_words*3
+            num_words = num_words * 3
         lib.ngzmp_hist_clear_all_start(self.path, -1, 0, num_words)
         lib.ngzmp_hist_clear_wait(self.path, -1)
 
     def start(self, col_time, ncycles=1, setup_scope=True, run_scope=False):
+        """Start a Run."""
         self.itfg_setup.col_time = col_time
         self.itfg_setup.trig_mode = lib.NGPDTrigSW
         self.itfg_setup.cycles = ncycles
+
+        c_itfg_setup = ffi.new("NGPDITFGSetup *")
+        c_itfg_setup.col_time = self.itfg_setup.col_time
+        c_itfg_setup.trig_mode = self.itfg_setup.trig_mode
+        c_itfg_setup.cycles = self.itfg_setup.cycles
 
         save_flags = lib.ngpd_get_run_flags(self.path)
         run_flags = save_flags
@@ -530,7 +640,7 @@ class PyNgpd:
 
         rc = lib.ngzmp_hist_enable(self.path, -1, lib.NGZMPHistEnbRun)
 
-        rc = lib.ngpd_dma_system_start(self.path, -1, 0, 0, self.itfg_setup)
+        rc = lib.ngpd_dma_system_start(self.path, -1, 0, 0, c_itfg_setup)
         lib.ngpd_set_run_flags(self.path, save_flags)
         if rc < 0:
             logging.error(self.get_error_message())
@@ -577,7 +687,14 @@ class PyNgpd:
                 logging.error(self.get_error_message())
                 finished = True
             if not quiet:
-                if itfg_status.flags != prev_status or itfg_status.cycles != prev_cycles or (itfg_status.timer_us != 0 and abs(itfg_status.timer_us - prev_timer) > 200000):
+                if (
+                    itfg_status.flags != prev_status
+                    or itfg_status.cycles != prev_cycles
+                    or (
+                        itfg_status.timer_us != 0
+                        and abs(itfg_status.timer_us - prev_timer) > 200000
+                    )
+                ):
                     if itfg_status.flags & lib.NGPD_SCOPE_STATUS_ITFG_RUNNING:
                         if itfg_status.flags & lib.NGPD_SCOPE_STATUS_ITFG_WAITING:
                             state_string = "Paused"
@@ -588,47 +705,37 @@ class PyNgpd:
                     else:
                         state_string = "Idle"
                     logging.debug(
-                        f"Timer={itfg_status.timer_us/1000000.0:.1f} s, Cycles={itfg_status.cycles}, Status=0x{itfg_status.flags:08X}, State={state_string}")
+                        f"Timer={itfg_status.timer_us / 1000000.0:.1f} s, Cycles={itfg_status.cycles}, Status=0x{itfg_status.flags:08X}, State={state_string}"
+                    )
             prev_status = itfg_status.flags
             prev_cycles = itfg_status.cycles
             if abs(itfg_status.timer_us - prev_timer) > 200000:
                 prev_timer = itfg_status.timer_us
             if (itfg_status.flags & lib.NGPD_SCOPE_STATUS_ITFG_RUNNING) == 0:
                 finished = True
-            if not ignore_pause and (itfg_status.flags & lib.NGPD_SCOPE_STATUS_ITFG_WAITING):
+            if not ignore_pause and (
+                itfg_status.flags & lib.NGPD_SCOPE_STATUS_ITFG_WAITING
+            ):
                 finished = True
 
-    def poll_itfg(self, quiet=False):
-        card = 0
-        done = 0.0
-        total = self.itfg_setup.cycles*self.itfg_setup.col_time
-        paused = False
+    def poll_itfg(self, card=0):
+        """Poll the NGPD ITFG for current acquisition state."""
         itfg_status = ffi.new("NGPDITFGStatus *")
         rc = lib.ngpd_read_itfg_status(self.path, card, itfg_status)
+
         if rc < 0:
             logging.error(self.get_error_message())
-            return ("ERROR", -1, -1)
+            return None
+        status = ITFGStatus(
+            ScopeStatus(itfg_status.flags),
+            itfg_status.cycles,
+            itfg_status.timer_us
+        )
+        
+        return status
 
-        if itfg_status.flags & lib.NGPD_SCOPE_STATUS_ITFG_RUNNING:
-            if itfg_status.flags & lib.NGPD_SCOPE_STATUS_ITFG_WAITING:
-                state_string = "Paused"
-            elif itfg_status.flags & lib.NGPD_SCOPE_STATUS_ITFG_COUNTING:
-                state_string = "Counting"
-            else:
-                state_string = "Not Counting"
-        else:
-            state_string = "Idle"
-        if not quiet:
-            logging.debug(
-                (f"Timer={itfg_status.timer_us} s, "
-                 f"Cycles={itfg_status.cycles}, "
-                 f"Status=0x{itfg_status.flags:08X}, State={state_string}")
-            )
-        done = self.itfg_setup.col_time-itfg_status.timer_us/1000000.0 + \
-            (self.itfg_setup.cycles-itfg_status.cycles)*self.itfg_setup.col_time
-        return (state_string, done, total)
-
-    def read_histogram(self, chan):
+    def read_histogram(self, chan=0):
+        """Read the histogram Data of the specified channel."""
         hist_conf = self.read_hist_conf(chan)
         nbins_hgt = 1 << hist_conf.nbits_height
         nbins_tail_sum = 1 << hist_conf.nbits_tail_sum
@@ -639,7 +746,9 @@ class PyNgpd:
         buff = np.zeros((nbins_ngp, nbins_tail_sum, nbins_hgt), np.uint32)
         ptr = ffi.from_buffer("uint32_t[]", buff)
 
-        rc = lib.ngzmp_hist_read_chan(self.path, chan, 0, nbins_hgt*nbins_tail_sum*nbins_ngp, ptr)
+        rc = lib.ngzmp_hist_read_chan(
+            self.path, chan, 0, nbins_hgt * nbins_tail_sum * nbins_ngp, ptr
+        )
         if rc < 0:
             logging.error(self.get_error_message())
         return buff
@@ -650,8 +759,17 @@ class PyNgpd:
         dig_stream = ffi.new("int *")
 
         stream_type = lib.ngpd_scope_stream_details_path(
-            self.path, card, stream, num_dig, bit_posn, dig_stream,
-            ffi.NULL, ffi.NULL, ffi.NULL, ffi.NULL, ffi.NULL
+            self.path,
+            card,
+            stream,
+            num_dig,
+            bit_posn,
+            dig_stream,
+            ffi.NULL,
+            ffi.NULL,
+            ffi.NULL,
+            ffi.NULL,
+            ffi.NULL,
         )
 
         if stream_type == lib.NGPDScopeStream_Signed:
@@ -667,7 +785,7 @@ class PyNgpd:
         return buff
 
     def read_adc_temp(self, card=0) -> float:
-        """Read the temperatures of the ADCs on the specified card"""
+        """Read the temperatures of the ADCs on the specified card."""
         temps = ffi.new("float[]", lib.NGZMP_I2C_NUM_ADT7410_ADC)
         rc = lib.ngpd_i2c_read_adc_temp(self.path, card, temps, ffi.NULL)
         if rc < 0:
@@ -675,7 +793,7 @@ class PyNgpd:
         return max(temps)
 
     def read_preamp_temp(self, card=0) -> float:
-        """Read the temperatures of the preamps on the specified card"""
+        """Read the temperatures of the preamps on the specified card."""
         temps = ffi.new("float[]", lib.NGZMP_I2C_NUM_ADT7410_PREAMP)
         rc = lib.ngpd_i2c_read_preamp_temp(self.path, card, temps, ffi.NULL)
         if rc < 0:
@@ -686,14 +804,17 @@ class PyNgpd:
         dict = {}
         for chip in range(lib.NGZMP_UCD90160_NUM_CHIPS):
             chip_read = ffi.new("int32_t[]", lib.NGZMP_UCD90160_NUM_RAILS)
-            rc = lib.ngzmp_i2c_read_ucd90160_vout(self.path, card, chip,
-                                                  0, lib.NGZMP_UCD90160_NUM_RAILS, chip_read)
+            rc = lib.ngzmp_i2c_read_ucd90160_vout(
+                self.path, card, chip, 0, lib.NGZMP_UCD90160_NUM_RAILS, chip_read
+            )
             if rc < 0:
                 raise NgpdLibException(self.get_error_message())
             for i, val in enumerate(chip_read):
                 label = VOLTAGE_SIGNAL_NAMES[chip][i]
                 if label:
-                    dict[label] = val * 0.0001  # display as volts rather than millivolts
+                    dict[label] = (
+                        val * 0.0001
+                    )  # display as volts rather than millivolts
         return dict
 
     def read_fpga_data(self, card=0) -> SystemMonitor:
@@ -710,10 +831,15 @@ class PyNgpd:
             # we're simulating the ADCs so can't actually read the value
             return -1
         data = ffi.new("uint8_t[]", 2)
-        rc = lib.ngzmp_i2c_read_reg_addr(self.path, card,
-                                         lib.NGZMP_I2C_BUS_PMBUS,
-                                         0x48,  # HARDCODING FOR NOW CAUSE #DEFINE FUNC NOT WORK WITH CFFi
-                                         lib.ADT7410_TCRIT_MSB, 2, data)
+        rc = lib.ngzmp_i2c_read_reg_addr(
+            self.path,
+            card,
+            lib.NGZMP_I2C_BUS_PMBUS,
+            0x48,  # HARDCODING FOR NOW CAUSE #DEFINE FUNC NOT WORK WITH CFFi
+            lib.ADT7410_TCRIT_MSB,
+            2,
+            data,
+        )
         if rc < 0:
             raise NgpdLibException(self.get_error_message())
         tcrit = (data[0] << 8) | data[1]
@@ -724,10 +850,15 @@ class PyNgpd:
             # we're simulating the preamps so can't actually read the value.
             return -1
         data = ffi.new("uint8_t[]", 2)
-        rc = lib.ngzmp_i2c_read_reg_addr(self.path, card,
-                                         lib.NGZMP_I2C_BUS_PREAMP,
-                                         0x48,
-                                         lib.ADT7410_TCRIT_MSB, 2, data)
+        rc = lib.ngzmp_i2c_read_reg_addr(
+            self.path,
+            card,
+            lib.NGZMP_I2C_BUS_PREAMP,
+            0x48,
+            lib.ADT7410_TCRIT_MSB,
+            2,
+            data,
+        )
         if rc < 0:
             raise NgpdLibException(self.get_error_message())
         tcrit = (data[0] << 8) | [data[1]]
@@ -749,8 +880,26 @@ class PyNgpd:
     def cal_offsets(self, first, last, target, num_pass, adjust_only, fname):
         if fname != "":
             fname_bytes = str.encode(fname)
-            lib.ngpd_cal_offsets(self.path,  ffi.NULL, ffi.NULL, first, last,
-                                 target, num_pass, adjust_only, fname_bytes)
+            lib.ngpd_cal_offsets(
+                self.path,
+                ffi.NULL,
+                ffi.NULL,
+                first,
+                last,
+                target,
+                num_pass,
+                adjust_only,
+                fname_bytes,
+            )
         else:
-            lib.ngpd_cal_offsets(self.path,  ffi.NULL, ffi.NULL, first, last,
-                                 target, num_pass, adjust_only, ffi.NULL)
+            lib.ngpd_cal_offsets(
+                self.path,
+                ffi.NULL,
+                ffi.NULL,
+                first,
+                last,
+                target,
+                num_pass,
+                adjust_only,
+                ffi.NULL,
+            )

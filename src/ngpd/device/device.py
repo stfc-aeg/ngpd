@@ -5,7 +5,7 @@ from ipaddress import ip_address
 from math import log2
 from os import listdir, path
 from typing import Literal
-
+from ngpd.device.acquisition import NgpdAcquisition, NgpdData
 from ngpd.device.channel import NgpdChannel
 from ngpd.device.pyngpd import (
     ANALOG_MAX_GAIN,
@@ -40,39 +40,6 @@ from ngpd.device.pyngpd import (
 )
 from ngpd.util import UsesNgpdLibrary
 
-TailMeasureSetting = Literal[
-    "tail_sum_delay",
-    "tail_sum_sample",
-    "fall_time_frac",
-    "enable_tail_subtract",
-    "enable_subtract_test",
-    "enable_subtract_neutron",
-    "ignore_tail_sum",
-    "ignore_fall_time",
-    "adaptive_tail_sum",
-    "min_height",
-    "max_height",
-    "min_fall",
-    "max_fall",
-    "min_count",
-    "tail_thres_c",
-    "tail_thres_m",
-]
-
-FilterSetting = Literal["type", "arg1", "arg2", "darg"]
-
-TriggerSetting = Literal[
-    "thres",
-    "sep",
-    "data_delay",
-    "trig_delay",
-    "delay_a",
-    "delay_b",
-    "width_a",
-    "width_b",
-]
-
-BaseSubSetting = Literal["use_fixed", "fixed", "error_limit", "div_cont"]
 
 HistogramSetting = Literal[
     "separate_ngp", "nbits_height", "shift_height", "nbits_tail_sum", "shift_tail_sum"
@@ -90,9 +57,9 @@ class NgpdDevice:
         self.num_cards = int(options.get("num_cards", 1))
         self.dummy_level = DummyLevel[options.get("dummy_level", "none").upper()]
 
-        self.playback_file_dir = options.get("playback_dir", "web/config/playback")
+        self.playback_file_dir = options.get("playback_dir", "web/config/files")
         self.selected_playback = ""
-        self.enable_playback = False
+        self.enable_playback = bool(self.dummy_level & DummyLevel.ADC)
         self.allowed_playback = [""]
         if path.exists(self.playback_file_dir) and path.isdir(self.playback_file_dir):
             self.allowed_playback.extend(
@@ -126,6 +93,9 @@ class NgpdDevice:
         self._hist_config: HistogramConfig = None
 
         self.channels = [NgpdChannel(i) for i in range(8)]
+
+        self.acquisition = NgpdAcquisition()
+        self.dataHandler = NgpdData()
 
         self.tree = {
             # lambdas in dict comprehension have scoping issues, so the index
@@ -496,7 +466,7 @@ class NgpdDevice:
                 ),
                 "file_name": (
                     lambda: self.selected_playback,
-                    None,
+                    self.set_playback_file,
                     {
                         "description": "Name of the playback file",
                         "allowed_values": self.allowed_playback,
@@ -549,6 +519,9 @@ class NgpdDevice:
         self.ngpd.setup_run_mode(self.dummy_level & DummyLevel.ADC)
         for channel in self.channels:
             channel.configure(self.ngpd)
+
+        self.acquisition.configure(self.ngpd)
+        self.dataHandler.configure(self.ngpd)
 
     @property
     def adc_temp(self):
@@ -636,3 +609,10 @@ class NgpdDevice:
             setattr(self.hist_config, setting, value)
 
         self.ngpd.setup_hist(-1, self.hist_config)
+
+    def set_run(self, run: bool):
+        """Start or stop the acquisition."""
+        if run:
+            self.acquisition.start()
+        else:
+            self.acquisition.stop()

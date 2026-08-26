@@ -1,10 +1,13 @@
-"""
-NGPD C library
+"""NGPD C library.
+
 Python Interface built using CFFI
 """
+
 from typing import Final
 
 NGPDTrigSW: Final[int]
+NGPDTrigExtTrigCycles: Final[int]
+
 NGPDDataSrcPlayback: Final[int]
 NGPDDataSrcADCFWD: Final[int]
 
@@ -64,23 +67,23 @@ NGPD_DIFF_TRIG_MAX_THRES: Final[int]
 def ngpd_config_ngzmp(ncards: int, baseIPaddress: str,
                       basePort: int, baseMACaddress: str, num_chan: int,
                       debug: int, card_index: int, do_init: int, dummy_system: int) -> int:
-    """Configure connection to NGPD Card"""
+    """Configure connection to NGPD Card."""
 
 
 def ngpd_get_num_chan(path: int) -> int:
-    """returns the total number of channels for this configured system"""
+    """Return the total number of channels for this configured system."""
 
 
 def ngpd_get_error_message() -> str:
-    """Get latest error message"""
+    """Get latest error message."""
 
 
 def ngpd_i2c_write_preamp_offset(path: int, chan: int, num: int, data: memoryview) -> int:
-    """Write values into the ADC Preamp"""
+    """Write values into the ADC Preamp."""
 
 
 def ngpd_i2c_read_preamp_offset(path: int, chan: int, num: int, data: memoryview) -> int:
-    """"""
+    """Read Preamp Offset values."""
 
 
 def ngzmp_spi_write_dga():
@@ -158,6 +161,9 @@ def ngzmp_hist_write_chan_config():
 def ngzmp_hist_read_chan_config():
     """"""
 
+def ngzmp_hist_read_chan(path: int, chan: int, offset: int, size: int, data: memoryview) -> int:
+    """Copy the Histogram Data from the specified channel into the data array."""
+
 
 def ngzmp_adc_setup_adc():
     """"""
@@ -168,11 +174,11 @@ def ngzmp_adc_read_status():
 
 
 def ngpd_i2c_read_adc_temp(path: int, card: int, temp: list[float], status: list[int]):
-    """Read the temperatures from the available sensors on the ADC chips"""
+    """Read the temperatures from the available sensors on the ADC chips."""
 
 
 def ngpd_i2c_read_preamp_temp(path: int, card: int, temp: list[float], status: list[int]):
-    """Read the temperatures from the available sensors on the preamps"""
+    """Read the temperatures from the available sensors on the preamps."""
 
 
 def ngzmp_i2c_read_ucd90160_vout(path: int, card: int, chip: int, page: int, num: int, vout: memoryview):
@@ -192,4 +198,8 @@ def ngpd_i2c_write_preamp_tcrit(path: int, card: int, chip: int, tcrit: int) -> 
 
 
 def ngzmp_i2c_read_reg_addr(path: int, card: int, bus: int, addr: int, reg_addr: int, size: int, data: memoryview):
+    """"""
+
+
+def ngpd_read_itfg_status(path: int, card: int, itfg_status: memoryview) -> int:
     """"""

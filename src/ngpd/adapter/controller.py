@@ -1,3 +1,5 @@
+"""Odin Control Controller Class Module."""
+
 import logging
 from ipaddress import ip_address
 from functools import partial
@@ -17,6 +19,7 @@ class NgpdController(BaseController):
     """Controller class for Ngpd."""
 
     def __init__(self, options: dict[str, str]):
+        """Initialise the controller, creating the Param Tree."""
         self.options = options
 
         self.device = NgpdDevice(self.options)
@@ -97,19 +100,66 @@ class NgpdController(BaseController):
         }
 
         acquisition_tree = {
-            "num_cycles": None,
-            "frame_length": None,
-            "scope_setup": None,
-            "scope_run": None,
-            "run": None,
-            "state": None
+            "num_cycles": (
+                lambda: self.device.acquisition.num_cyles,
+                lambda v: setattr(self.device.acquisition, "num_cycles", v),
+                {"description": "Number of Cycles for the Acquisition."}
+            ),
+            "frame_length": (
+                lambda: self.device.acquisition.frame_length,
+                lambda v: setattr(self.device.acquisition, "frame_length", v),
+                {"description": "Length, in seconds, of each Acquisition Cycle"}
+            ),
+            "scope_setup": (
+                lambda: self.device.acquisition.setup_scope,
+                lambda v: setattr(self.device.acquisition, "setup_scope", v),
+                {"description": "Enable to setup Scope Mode when starting the run."}
+            ),
+            "scope_run": (
+                lambda: self.device.acquisition.run_scope,
+                lambda v: setattr(self.device.acquisition, "run_scope", v),
+                {"description": "Run the NGPD system in Scope Mode"}
+            ),
+            "run": (
+                None,
+                self.device.set_run,
+                {"description": "Start or stop the acquisition"}
+            ),
+            "state": {
+                "total": (
+                    lambda: self.device.acquisition.total,
+                    None,
+                    {"description": "Total Frames requested for this acquisition"}
+                ),
+                "current": (
+                    lambda: self.device.acquisition.done,
+                    None,
+                    {"description": "Number of frames currently processed by this acquisition"}
+                ),
+                "status": (
+                    lambda: self.device.acquisition.acq_state,
+                    None,
+                    {"description": "ITFG Status"}
+                )
+            },
+            "data": (
+                self.device.dataHandler.get_data,
+                self.device.dataHandler.refresh_data,
+                {"description": "Histogram Data from channel 0, encoded as a Base64 string"}
+            ),
+            "data_shape": (
+                lambda: self.device.dataHandler.data_shape,
+                None,
+                {"description": "Shape of Histogram Data"}
+            )
         }
 
         self.param_tree = ParameterTree({
             "device": device_tree,
             "monitor": monitoring_tree,
             # "channel_config": channel_tree,
-            "config": self.device.tree
+            "config": self.device.tree,
+            "acq": acquisition_tree
         })
 
     def initialize(self, adapters):
