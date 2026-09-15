@@ -1,0 +1,79 @@
+
+.heatmapCanvas {
+    width: 100%;
+    position: relative;
+    z-index: 1;
+}
+
+.tooltip {
+    position: absolute;
+    background-color: var(--bs-secondary-bg);
+    border-radius: var(--bs-border-radius);
+    transform: translate(calc(var(--heatmap-padding) - 50%), -120%);
+    text-align: center;
+    color: var(--bs-body-color);
+    padding: 5px 2px;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: var(--bs-secondary-bg) transparent transparent transparent;
+}
+
+.axesSvg {
+    width: 100%;
+    height: 100%;
+    shape-rendering: crispEdges;
+    position: absolute;
+    pointer-events: none;
+    overflow: visible;
+    z-index: 2;
+}
+
+.scatterSvg {
+    pointer-events: none;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    overflow: visible;
+    z-index: 3;
+}
+
+.scatterSvg > g > circle {
+    pointer-events: painted;
+    overflow: visible;
+    cursor: grab;
+}
+
+.scatterSvg > g > rect {
+    pointer-events: painted;
+    overflow: visible;
+    cursor: grabbing;
+}
+
+.scatterSvg > g > circle:active {
+    cursor: grabbing;
+}
+
+.tickText {
+    font-family: 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-size: 12px;
+    fill: currentColor;
+    text-anchor: middle;
+}
+
+.heatmap {
+    --heatmap-padding: 50px;
+    position: relative;
+    padding-left: var(--heatmap-padding);
+    padding-bottom: var(--heatmap-padding);
+    padding-right: var(--heatmap-padding);
+}
