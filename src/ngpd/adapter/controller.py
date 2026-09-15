@@ -29,138 +29,201 @@ class NgpdController(BaseController):
                 lambda: str(self.device.ip),
                 self.set_ip,
                 {
-                    "description": ("IP Address of the NGPD Board. "
-                                    "In a multi-board system this is the first board")
-                }
+                    "description": (
+                        "IP Address of the NGPD Board. "
+                        "In a multi-board system this is the first board"
+                    )
+                },
             ),
             "num_cards": (
                 lambda: self.device.num_cards,
                 partial(setattr, self.device, "num_cards"),
-                {"description": "Number of NGPD cards in the whole system",
-                 "min": 1, "max": 8}
+                {
+                    "description": "Number of NGPD cards in the whole system",
+                    "min": 1,
+                    "max": 8,
+                },
             ),
             "dummy_system": (
                 lambda: self.device.dummy_level.name.lower(),
                 self.set_dummy_level,
-                {"description": "Set what parts of the system are simulated by the software",
-                 "allowed_values": [level.name.lower() for level in DummyLevel]}
+                {
+                    "description": "Set what parts of the system are simulated by the software",
+                    "allowed_values": [level.name.lower() for level in DummyLevel],
+                },
             ),
             "connect": (
-                lambda: self.device.ngpd is not None, lambda _: self.device.configure(),
-                {"description": "Configure the NGPD card(s) and initializes the connection(s)"}
-            )
+                lambda: self.device.ngpd is not None,
+                lambda _: self.device.configure(),
+                {
+                    "description": "Configure the NGPD card(s) and initializes the connection(s)"
+                },
+            ),
         }
 
         monitoring_tree = {
             "adc": {
                 "temperature": (
-                    lambda: self.device.adc_temp, None,
-                    {"description": "Temperature reading from the ADC board",
-                     "units": "°C"}
+                    lambda: self.device.adc_temp,
+                    None,
+                    {
+                        "description": "Temperature reading from the ADC board",
+                        "units": "°C",
+                    },
                 ),
                 "voltages": (
-                    lambda: self.device.adc_voltages, None,
-                    {"description": "ADC Voltage Signals"}
+                    lambda: self.device.adc_voltages,
+                    None,
+                    {"description": "ADC Voltage Signals"},
                 ),
                 "trip_temp": (
                     lambda: self.device.adc_tcrit,
                     lambda v: self.device.set_adc_tcrit(v),
-                    {"description": "Maximum allowed temperature before tripping protection"}
-                )
+                    {
+                        "description": "Maximum allowed temperature before tripping protection"
+                    },
+                ),
             },
             "preamp": {
                 "temperature": (
-                    lambda: self.device.preamp_temp, None,
-                    {"description": "Temperature reading from the Pre-Amp board",
-                     "units": "°C"}
+                    lambda: self.device.preamp_temp,
+                    None,
+                    {
+                        "description": "Temperature reading from the Pre-Amp board",
+                        "units": "°C",
+                    },
                 ),
                 "trip_temp": (
                     lambda: self.device.preamp_tcrit,
                     lambda v: self.device.set_preamp_tcrit(v),
-                    {"description": "Maximum allowed temperature before tripping protection"}
-                )
+                    {
+                        "description": "Maximum allowed temperature before tripping protection"
+                    },
+                ),
             },
             "fpga": {
                 "temperature": (
-                    lambda: max(
-                        self.device.system_monitor.AMS_PSTempLPD,
-                        self.device.system_monitor.AMS_PSTempFPD,
-                        self.device.system_monitor.XADC_Temp) * 0.001,
+                    lambda: (
+                        max(
+                            self.device.system_monitor.AMS_PSTempLPD,
+                            self.device.system_monitor.AMS_PSTempFPD,
+                            self.device.system_monitor.XADC_Temp,
+                        )
+                        * 0.001
+                    ),
                     None,
-                    {"description": "Temperature reading from the FPGA",
-                     "units": "°C"}
+                    {"description": "Temperature reading from the FPGA", "units": "°C"},
                 ),
                 "voltages": (
-                    lambda: {key: val * 0.0001 for key, val in asdict(self.device.system_monitor).items()
-                             if key not in ["AMS_PSTempLPD", "AMS_PSTempFPD", "XADC_Temp"]},
+                    lambda: {
+                        key: val * 0.0001
+                        for key, val in asdict(self.device.system_monitor).items()
+                        if key not in ["AMS_PSTempLPD", "AMS_PSTempFPD", "XADC_Temp"]
+                    },
                     None,
-                    {"description": "Dictionary of voltages on the FPGA"}
-                )
-            }
+                    {"description": "Dictionary of voltages on the FPGA"},
+                ),
+            },
         }
 
         acquisition_tree = {
             "num_cycles": (
                 lambda: self.device.acquisition.num_cyles,
                 lambda v: setattr(self.device.acquisition, "num_cycles", v),
-                {"description": "Number of Cycles for the Acquisition."}
+                {"description": "Number of Cycles for the Acquisition."},
             ),
             "frame_length": (
                 lambda: self.device.acquisition.frame_length,
                 lambda v: setattr(self.device.acquisition, "frame_length", v),
-                {"description": "Length, in seconds, of each Acquisition Cycle"}
+                {"description": "Length, in seconds, of each Acquisition Cycle"},
             ),
             "scope_setup": (
                 lambda: self.device.acquisition.setup_scope,
                 lambda v: setattr(self.device.acquisition, "setup_scope", v),
-                {"description": "Enable to setup Scope Mode when starting the run."}
+                {"description": "Enable to setup Scope Mode when starting the run."},
             ),
             "scope_run": (
                 lambda: self.device.acquisition.run_scope,
                 lambda v: setattr(self.device.acquisition, "run_scope", v),
-                {"description": "Run the NGPD system in Scope Mode"}
+                {"description": "Run the NGPD system in Scope Mode"},
             ),
             "run": (
                 None,
                 self.device.set_run,
-                {"description": "Start or stop the acquisition"}
+                {"description": "Start or stop the acquisition"},
             ),
             "state": {
                 "total": (
                     lambda: self.device.acquisition.total,
                     None,
-                    {"description": "Total Frames requested for this acquisition"}
+                    {"description": "Total Frames requested for this acquisition"},
                 ),
                 "current": (
                     lambda: self.device.acquisition.done,
                     None,
-                    {"description": "Number of frames currently processed by this acquisition"}
+                    {
+                        "description": "Number of frames currently processed by this acquisition"
+                    },
                 ),
                 "status": (
                     lambda: self.device.acquisition.acq_state,
                     None,
-                    {"description": "ITFG Status"}
-                )
+                    {"description": "ITFG Status"},
+                ),
             },
-            "data": (
-                self.device.dataHandler.get_data,
-                self.device.dataHandler.refresh_data,
-                {"description": "Histogram Data from channel 0, encoded as a Base64 string"}
-            ),
-            "data_shape": (
-                lambda: self.device.dataHandler.data_shape,
-                None,
-                {"description": "Shape of Histogram Data"}
-            )
+            "graph": {
+                "hist": (
+                    self.device.dataHandler.get_data,
+                    None,
+                    {
+                        "description": "Histogram Data from selected channel, encoded as a Base64 string"
+                    },
+                ),
+                "tailsum": (
+                    self.device.dataHandler.get_tailsum,
+                    None,
+                    {"description": "Tailsum Scatterplot data encoded as Base64 string"}
+                ),
+                "pulse_height": (
+                    self.device.dataHandler.get_pulse_height,
+                    None
+                ),
+                "refresh_data": (
+                    None,
+                    lambda _: self.device.dataHandler.refresh_data(),
+                    {
+                        "description": "Tell the Data Handler to re-read the data from the NGPD"
+                    },
+                ),
+                "data_shape": (
+                    lambda: self.device.dataHandler.data_shape,
+                    None,
+                    {"description": "Shape of Histogram Data"},
+                ),
+                "channel": (
+                    lambda: self.device.dataHandler.chan,
+                    self.device.dataHandler.set_channel,
+                    {"description": "Select channel to graph data", "min": 0, "max": 7},
+                ),
+                "signal": (
+                    lambda: self.device.dataHandler.select_display,
+                    lambda v: setattr(self.device.dataHandler, "select_display", v),
+                    {
+                        "description": "Select which signal to histogram",
+                        "allowed_values": ["neutron", "gamma", "pileup", "all"],
+                    },
+                ),
+            },
         }
 
-        self.param_tree = ParameterTree({
-            "device": device_tree,
-            "monitor": monitoring_tree,
-            # "channel_config": channel_tree,
-            "config": self.device.tree,
-            "acq": acquisition_tree
-        })
+        self.param_tree = ParameterTree(
+            {
+                "device": device_tree,
+                "monitor": monitoring_tree,
+                "config": self.device.tree,
+                "acq": acquisition_tree,
+            }
+        )
 
     def initialize(self, adapters):
         self.adapters = adapters

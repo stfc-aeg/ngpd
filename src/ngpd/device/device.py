@@ -80,8 +80,8 @@ class NgpdDevice:
 
         self.ngpd: PyNgpd = None
 
-        self._adc_temp = -1
-        self._preamp_temp = -1
+        self._adc_temp = -1.0
+        self._preamp_temp = -1.0
 
         self._adc_voltages = {"none": -1}
 
