@@ -3,6 +3,7 @@ import type { MouseEventHandler } from "react";
 import { extent, interpolateInferno, scaleSequentialSqrt } from "d3";
 
 import styles from './style.module.css';
+import { ColourBar } from "./Legend";
 
 interface HeatmapProps {
   data: number[][];
@@ -48,6 +49,7 @@ const Heatmap = ({ data }: HeatmapProps) => {
   useEffect(() => {
     const canvas = ref.current;
     const ctx = canvas?.getContext("2d");
+    const colour = scaleSequentialSqrt(interpolateInferno).domain([min ?? 0, max ?? 1024]);
     if (canvas && ctx) {
       const cellWidth = canvas.width / numCols;
       const cellHeight = canvas.height / numRows;
@@ -62,11 +64,12 @@ const Heatmap = ({ data }: HeatmapProps) => {
         }
       }
     }
-  }, [numCols, numRows, data]);
+  }, [numCols, numRows, data, min, max]);
 
   return (
     <>
       <canvas id="heatmapCanvas" ref={ref} className={styles.heatmapCanvas} onMouseMove={handleMouseMove} onMouseLeave={() => setHovered(null)} />
+        <ColourBar colourScale={colour} min={min} max={max} />
       {hovered &&
         <div className={styles.tooltip} style={{ left: hovered.x, top: hovered.y }}>
           {`(${hovered.col}, ${hovered.row}): Val: ${hovered.val}`}

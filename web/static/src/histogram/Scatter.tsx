@@ -43,7 +43,7 @@ const Scatter = ({ data, xRange, yRange, onMouseDrag, onMouseUp, colors = scheme
 
   const setHoverFromCircle = (circle: SVGCircleElement) => {
     const x = circle.cx.baseVal.value;
-    const y = circle.cx.baseVal.value;
+    const y = circle.cy.baseVal.value;
     const col = xScale.invert(x);
     const row = yScale.invert(y);
     const name = circle.parentElement?.id ?? "unknown";
@@ -83,6 +83,8 @@ const Scatter = ({ data, xRange, yRange, onMouseDrag, onMouseUp, colors = scheme
         e.currentTarget = selectedCircle;
         onMouseDrag(e as React.MouseEvent<SVGCircleElement>);
       }
+    } else {
+      setCircle(null);
     }
   }
 
@@ -121,7 +123,7 @@ const Scatter = ({ data, xRange, yRange, onMouseDrag, onMouseUp, colors = scheme
                     fill={colourScale(key)}
                     onMouseEnter={mouseEnter}
                     onMouseLeave={mouseLeave}
-                    onMouseMove={onMouseDrag}
+                    onMouseMove={mouseMove}
                     onMouseUp={mouseUp}
                     onMouseDown={mouseDown}
                   />

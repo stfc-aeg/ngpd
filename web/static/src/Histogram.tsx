@@ -22,8 +22,8 @@ const Histogram = ({ endpoint }: HistogramProps) => {
   const tailsum_shift = endpoint.data?.config.histogram.shift_tailsum ?? 0;
 
   const { numCols, numRows } = {
-    numCols: shape[1] ?? 0,
-    numRows: shape[2] ?? 0
+    numCols: shape[1],
+    numRows: shape[2]
   }
 
   const scatterData: ComponentProps<typeof Scatter>["data"] = {
@@ -133,7 +133,7 @@ const Histogram = ({ endpoint }: HistogramProps) => {
 
   return (
     <div className={styles.heatmap}>
-      <Axes xRange={[0, numCols]} yRange={[0, numRows]} step={128} />
+      <Axes xRange={[0, numCols]} yRange={[0, numRows]} step={128} xLabel="Pulse Height" yLabel="Tail Sum"/>
       <Scatter data={scatterData} xRange={[0, numCols]} yRange={[0, numRows]} onMouseDrag={onScatterDrag} onMouseUp={onScatterRelease} />
       <Heatmap data={data} />
     </div>

@@ -66,6 +66,9 @@ const Axes = ({ xRange, yRange, xLabel, yLabel, step = 100 }: AxisSvgProps) => {
             </text>
           </g>
         ))}
+        <text className={styles.yTitle} x={-(dims?.height ?? 0) / 2} y={-40}>
+          {yLabel}
+        </text>
       </g>
       <g transform={`translate(0, ${dims?.height ?? 0})`}>
         <path // horizontal axis
@@ -83,6 +86,9 @@ const Axes = ({ xRange, yRange, xLabel, yLabel, step = 100 }: AxisSvgProps) => {
             </text>
           </g>
         ))}
+        <text className={styles.xTitle} x={(dims?.width ?? 0) / 2} y={50}>
+          {xLabel}
+        </text>
       </g>
     </svg>
   )

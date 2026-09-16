@@ -168,7 +168,16 @@ class NgpdController(BaseController):
                 "status": (
                     lambda: self.device.acquisition.acq_state,
                     None,
-                    {"description": "ITFG Status"},
+                    {
+                        "description": "ITFG Status",
+                        "allowed_values": [
+                            "error",
+                            "paused",
+                            "counting",
+                            "running",
+                            "idle",
+                        ],
+                    },
                 ),
             },
             "graph": {
@@ -182,12 +191,11 @@ class NgpdController(BaseController):
                 "tailsum": (
                     self.device.dataHandler.get_tailsum,
                     None,
-                    {"description": "Tailsum Scatterplot data encoded as Base64 string"}
+                    {
+                        "description": "Tailsum Scatterplot data encoded as Base64 string"
+                    },
                 ),
-                "pulse_height": (
-                    self.device.dataHandler.get_pulse_height,
-                    None
-                ),
+                "pulse_height": (self.device.dataHandler.get_pulse_height, None),
                 "refresh_data": (
                     None,
                     lambda _: self.device.dataHandler.refresh_data(),
