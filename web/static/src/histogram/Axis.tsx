@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getDimensions } from "./util";
 import { range, scaleLinear } from "d3";
 
@@ -46,6 +46,10 @@ const Axes = ({ xRange, yRange, xLabel, yLabel, step = 100 }: AxisSvgProps) => {
       window.removeEventListener("resize", handleResize);
       svg?.addEventListener("load", handleResize);
     }
+  }, []);
+
+  useLayoutEffect(() => {
+    setDims(getDimensions(ref.current));
   }, []);
 
   return (

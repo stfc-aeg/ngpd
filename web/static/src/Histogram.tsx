@@ -1,15 +1,16 @@
 import type { AdapterEndpoint } from "@dssg/odin-react";
-import type { EndpointParams } from "./App";
+import type { EndpointParams } from "./types";
 import { useEffect, useMemo, useState, type ComponentProps, type MouseEventHandler } from "react";
 import { getDimensions } from "./histogram/util";
 import styles from "./histogram/style.module.css";
 import { Axes, Heatmap, Scatter } from "./histogram";
 
 interface HistogramProps {
-  endpoint: AdapterEndpoint<EndpointParams>
+  endpoint: AdapterEndpoint<EndpointParams>;
+  data_endpoint?: AdapterEndpoint<{ value: EndpointParams["acq"]["graph"]["hist"] }>;
 }
 
-const Histogram = ({ endpoint }: HistogramProps) => {
+const Histogram = ({ endpoint, data_endpoint }: HistogramProps) => {
 
   const [min_height, setMinHeight] = useState(0);
   const [max_height, setMaxHeight] = useState(0);
@@ -33,23 +34,27 @@ const Histogram = ({ endpoint }: HistogramProps) => {
   }
 
   const data = useMemo(() => {
-    const hist = endpoint.data?.acq.graph.hist ?? "";
+    const hist = data_endpoint ? data_endpoint.data?.value : endpoint.data?.acq.graph.hist;
 
     const reshaped_data: number[][] = [];
 
     if (hist) {
-      const tmp = Uint8Array.fromBase64(hist);
-      const buf = new Uint32Array(tmp.buffer);
+      try {
+        const tmp = Uint8Array.fromBase64(hist);
+        const buf = new Uint32Array(tmp.buffer);
 
-      const dataset_length = numCols * numRows;
+        const dataset_length = numCols * numRows;
 
-      for (let i = 0; i < dataset_length; i += numRows) {
-        reshaped_data.push(Array.from(buf.slice(i, i + numCols)))
+        for (let i = 0; i < dataset_length; i += numRows) {
+          reshaped_data.push(Array.from(buf.slice(i, i + numCols)))
+        }
+      } catch (err) {
+        console.log(err);
       }
     }
 
     return reshaped_data;
-  }, [endpoint.data?.acq.graph.hist, numCols, numRows]);
+  }, [data_endpoint, endpoint.data?.acq.graph.hist, numCols, numRows]);
 
   const onScatterDrag: MouseEventHandler<SVGCircleElement> = (e) => {
     if (e.buttons & 1) { // test that left click is held
@@ -133,7 +138,7 @@ const Histogram = ({ endpoint }: HistogramProps) => {
 
   return (
     <div className={styles.heatmap}>
-      <Axes xRange={[0, numCols]} yRange={[0, numRows]} step={128} xLabel="Pulse Height" yLabel="Tail Sum"/>
+      <Axes xRange={[0, numCols]} yRange={[0, numRows]} step={128} xLabel="Pulse Height" yLabel="Tail Sum" />
       <Scatter data={scatterData} xRange={[0, numCols]} yRange={[0, numRows]} onMouseDrag={onScatterDrag} onMouseUp={onScatterRelease} />
       <Heatmap data={data} />
     </div>

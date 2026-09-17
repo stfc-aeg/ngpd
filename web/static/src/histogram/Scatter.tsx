@@ -1,4 +1,4 @@
-import { type MouseEventHandler, type CSSProperties, useRef, useState, useEffect } from "react";
+import { type MouseEventHandler, type CSSProperties, useRef, useState, useEffect, useLayoutEffect } from "react";
 import { line, scaleLinear, scaleOrdinal, schemeObservable10 } from "d3";
 
 import styles from './style.module.css';
@@ -97,6 +97,11 @@ const Scatter = ({ data, xRange, yRange, onMouseDrag, onMouseUp, colors = scheme
       window.removeEventListener("resize", handleResize);
       svg?.addEventListener("load", handleResize);
     }
+  }, []);
+
+  useLayoutEffect(() => {
+    console.log("SCATTER LAYOUT EFFECT");
+    setDims(getDimensions(ref.current));
   }, []);
 
   return (

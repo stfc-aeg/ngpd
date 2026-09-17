@@ -291,7 +291,7 @@ class NgpdDevice:
                             "min_count", v
                         ),
                         {
-                            "description": "Minimum Fall Time",
+                            "description": "Minimum Pulse Count",
                             "min": 0,
                             "max": MEASURE_MAX_TAIL_COUNT,
                         },

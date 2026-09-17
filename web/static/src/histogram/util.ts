@@ -6,9 +6,10 @@ const getDimensions = (target?: SVGSVGElement | HTMLElement | null) => {
         return sib.getBoundingClientRect()
       }
     }
-    console.log("No Canvas in Siblings");
+    console.warn("No Canvas in Siblings");
     return;
   }
+  console.warn("No Siblings");
 }
 
 export { getDimensions }

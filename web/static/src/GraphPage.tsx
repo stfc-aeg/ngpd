@@ -1,13 +1,14 @@
-import { EndpointButton, EndpointCheckbox, EndpointDropdown, EndpointInput, TitleCard, type AdapterEndpoint } from "@dssg/odin-react";
-import type { EndpointParams } from "./App";
+import { EndpointButton, EndpointCheckbox, EndpointDropdown, EndpointInput, TitleCard, useAdapterEndpoint, type AdapterEndpoint } from "@dssg/odin-react";
+import type { EndpointParams } from "./types";
 import { ButtonGroup, Col, Container, DropdownItem, FloatingLabel, Form, InputGroup, Row, Stack } from "react-bootstrap";
 import { Histogram } from "./Histogram";
 
 interface GraphPageProps {
   endpoint: AdapterEndpoint<EndpointParams>;
+  data_endpoint: AdapterEndpoint<{ value: EndpointParams["acq"]["graph"]["hist"] }>;
 }
 
-const GraphPage = ({ endpoint }: GraphPageProps) => {
+const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
 
   const Controls = (
     <Row>
@@ -38,7 +39,7 @@ const GraphPage = ({ endpoint }: GraphPageProps) => {
         <Col>
           <TitleCard title={Controls}>
             <Stack gap={2}>
-              <Histogram endpoint={endpoint} />
+              <Histogram endpoint={endpoint} data_endpoint={data_endpoint}/>
 
             </Stack>
           </TitleCard>

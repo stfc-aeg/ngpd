@@ -47,13 +47,13 @@ const Heatmap = ({ data }: HeatmapProps) => {
   }
 
   useEffect(() => {
+    const start = Date.now();
     const canvas = ref.current;
     const ctx = canvas?.getContext("2d");
     const colour = scaleSequentialSqrt(interpolateInferno).domain([min ?? 0, max ?? 1024]);
     if (canvas && ctx) {
       const cellWidth = canvas.width / numCols;
       const cellHeight = canvas.height / numRows;
-      console.log(`Cell Shape: (${cellWidth}, ${cellHeight})`)
 
       ctx.clearRect(0, 0, ctx.canvas.clientWidth, ctx.canvas.clientHeight)
       for (const [i, row] of data.entries()) {
@@ -64,12 +64,14 @@ const Heatmap = ({ data }: HeatmapProps) => {
         }
       }
     }
+    const ms = Date.now() - start;
+    console.log(`Rendering graph took ${ms}ms`)
   }, [numCols, numRows, data, min, max]);
 
   return (
     <>
       <canvas id="heatmapCanvas" ref={ref} className={styles.heatmapCanvas} onMouseMove={handleMouseMove} onMouseLeave={() => setHovered(null)} />
-        <ColourBar colourScale={colour} min={min} max={max} />
+      <ColourBar colourScale={colour} min={min} max={max} />
       {hovered &&
         <div className={styles.tooltip} style={{ left: hovered.x, top: hovered.y }}>
           {`(${hovered.col}, ${hovered.row}): Val: ${hovered.val}`}
@@ -78,5 +80,6 @@ const Heatmap = ({ data }: HeatmapProps) => {
     </>
   )
 }
+
 
 export { Heatmap };

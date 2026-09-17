@@ -182,20 +182,20 @@ class NgpdController(BaseController):
             },
             "graph": {
                 "hist": (
-                    self.device.dataHandler.get_data,
+                    lambda: "Directly access this Param to get the actual data",
                     None,
                     {
                         "description": "Histogram Data from selected channel, encoded as a Base64 string"
                     },
                 ),
-                "tailsum": (
-                    self.device.dataHandler.get_tailsum,
-                    None,
-                    {
-                        "description": "Tailsum Scatterplot data encoded as Base64 string"
-                    },
-                ),
-                "pulse_height": (self.device.dataHandler.get_pulse_height, None),
+                # "tailsum": (
+                #     self.device.dataHandler.get_tailsum,
+                #     None,
+                #     {
+                #         "description": "Tailsum Scatterplot data encoded as Base64 string"
+                #     },
+                # ),
+                # "pulse_height": (self.device.dataHandler.get_pulse_height, None),
                 "refresh_data": (
                     None,
                     lambda _: self.device.dataHandler.refresh_data(),
@@ -243,7 +243,12 @@ class NgpdController(BaseController):
 
     def get(self, path, with_metadata=False):
         try:
-            return self.param_tree.get(path, with_metadata)
+            # TODO: special case if requesting histogram data, due to its size. Including it in the full param tree is causing slowdown.
+            # This method is hacky and not great? but it does work.
+            if path == "acq/graph/hist":
+                return {"value": self.device.dataHandler.get_data()}
+            else:
+                return self.param_tree.get(path, with_metadata)
         except (ParameterTreeError, NgpdLibException) as error:
             logging.error(error)
             raise NgpdError(error)
