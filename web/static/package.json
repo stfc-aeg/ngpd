@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@dssg/odin-react": "^2.3.0",
+    "@dssg/odin-react": "^2.3.3-rc.0",
     "bootstrap": "^5.3.8",
     "d3": "^7.9.0",
     "ndarray": "^1.1.1",

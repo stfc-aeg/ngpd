@@ -1,9 +1,9 @@
-import { EndpointButton, EndpointCheckbox, EndpointDropdown, EndpointInput, TitleCard, type AdapterEndpoint } from "@dssg/odin-react";
+import { EndpointButton, EndpointCheckbox, EndpointDoubleSlider, EndpointDropdown, EndpointInput, EndpointSelect, TitleCard, type AdapterEndpoint } from "@dssg/odin-react";
+import type { MouseEventHandler } from "react";
+import { useState } from "react";
+import { Button, Col, Container, FloatingLabel, Form, InputGroup, Row, Stack, Tab, Tabs } from "react-bootstrap";
 import type { EndpointParams } from "./types";
 import { channels } from "./types";
-import { Container, Row, Col, Stack, Card, InputGroup, FloatingLabel, Collapse, Form, Tabs, Tab, Button } from "react-bootstrap";
-import { useState } from "react";
-import type { MouseEventHandler, PropsWithChildren, ReactNode } from "react";
 
 interface ConfigPageProps {
   endpoint: AdapterEndpoint<EndpointParams>;
@@ -82,7 +82,7 @@ const ConfigPage = ({ endpoint }: ConfigPageProps) => {
         </Row>
         <Row>
           <Col>
-            <Tabs defaultActiveKey={0} onSelect={(k) => setChan(parseInt(k ?? "0") as typeof channels[0])} transition={false}>
+            <Tabs defaultActiveKey={0} onSelect={(k) => setChan(parseInt(k ?? "0") as typeof channels[0])}>
               {channels.map((chan) => (
                 <Tab eventKey={chan} title={`Channel ${chan}`} style={{ marginTop: "5px" }}>
                   <Row>
@@ -103,35 +103,48 @@ const ConfigPage = ({ endpoint }: ConfigPageProps) => {
                           </Row>
                         </TitleCard>
                         <TitleCard title={<ConfigCardHeader title="Filter" onClick={() => setAllConfig("filter")} />}>
-                          <InputGroup>
-                            <InputGroup.Text>Type</InputGroup.Text>
-                            <EndpointDropdown endpoint={endpoint} fullpath={`config/filter/channel_${chan}/type`} />
-                            {endpoint.data?.config.filter[`channel_${chan}`].type == "rectangle" &&
-                              <FloatingLabel label="Averaging Window Size">
-                                <EndpointInput endpoint={endpoint} fullpath={`config/filter/channel_${chan}/arg_1`} />
+                          <Row>
+                            <Col xs={4}>
+                              <FloatingLabel label="Filter Type">
+                                <EndpointSelect endpoint={endpoint} fullpath={`config/filter/channel_${chan}/type`} />
                               </FloatingLabel>
-                            }
-                            {endpoint.data?.config.filter[`channel_${chan}`].type == "gaussian" &&
-                              <FloatingLabel label="Signma">
-                                <EndpointInput endpoint={endpoint} fullpath={`config/filter/channel_${chan}/arg_float`} />
-                              </FloatingLabel>
-                            }
-                            {endpoint.data?.config.filter[`channel_${chan}`].type == "exponential" &&
-                              <FloatingLabel label="T Samples">
-                                <EndpointInput endpoint={endpoint} fullpath={`config/filter/channel_${chan}/arg_float`} />
-                              </FloatingLabel>
-                            }
-                            {endpoint.data?.config.filter[`channel_${chan}`].type == "trapezoidal" &&
-                              <>
-                                <FloatingLabel label="Top Width">
-                                  <EndpointInput endpoint={endpoint} fullpath={`config/filter/channel_${chan}/arg_1`} />
-                                </FloatingLabel>
-                                <FloatingLabel label="Bottom Width">
-                                  <EndpointInput endpoint={endpoint} fullpath={`config/filter/channel_${chan}/arg_2`} />
-                                </FloatingLabel>
-                              </>
-                            }
-                          </InputGroup>
+                            </Col>
+                            <Col>
+                              <InputGroup>
+                                {endpoint.data?.config.filter[`channel_${chan}`].type == "rectangle" &&
+                                  <FloatingLabel label="Averaging Window Size">
+                                    <EndpointInput endpoint={endpoint} fullpath={`config/filter/channel_${chan}/arg_1`}
+                                      min={1} max={101} />
+                                  </FloatingLabel>
+                                }
+                                {endpoint.data?.config.filter[`channel_${chan}`].type == "gaussian" &&
+                                  <FloatingLabel label="Sigma">
+                                    <EndpointInput endpoint={endpoint} fullpath={`config/filter/channel_${chan}/arg_float`}
+                                      min={1} max={25} step={0.5} />
+
+                                  </FloatingLabel>
+                                }
+                                {endpoint.data?.config.filter[`channel_${chan}`].type == "exponential" &&
+                                  <FloatingLabel label="T Samples">
+                                    <EndpointInput endpoint={endpoint} fullpath={`config/filter/channel_${chan}/arg_float`}
+                                      min={1} max={25} step={0.5} />
+                                  </FloatingLabel>
+                                }
+                                {endpoint.data?.config.filter[`channel_${chan}`].type == "trapezoidal" &&
+                                  <>
+                                    <FloatingLabel label="Top Width">
+                                      <EndpointInput endpoint={endpoint} fullpath={`config/filter/channel_${chan}/arg_1`}
+                                        min={0} max={100} />
+                                    </FloatingLabel>
+                                    <FloatingLabel label="Bottom Width">
+                                      <EndpointInput endpoint={endpoint} fullpath={`config/filter/channel_${chan}/arg_2`}
+                                        min={0} max={100} />
+                                    </FloatingLabel>
+                                  </>
+                                }
+                              </InputGroup>
+                            </Col>
+                          </Row>
                         </TitleCard>
                         <TitleCard title={<ConfigCardHeader title="Tail Measurement" onClick={() => setAllConfig("tail_measure")} />}>
                           <Row>
@@ -184,12 +197,11 @@ const ConfigPage = ({ endpoint }: ConfigPageProps) => {
                                 </FloatingLabel>
                               </Stack>
                             </Col>
-                            <Col xs={4} style={{ alignContent: "center" }}>
+                            <Col xs={4}>
                               <Stack gap={2}>
-                                <InputGroup>
-                                  <InputGroup.Text>Div Cont</InputGroup.Text>
-                                  <EndpointDropdown endpoint={endpoint} fullpath={`config/base_sub/channel_${chan}/div_cont`} />
-                                </InputGroup>
+                                <FloatingLabel label="Div Cont">
+                                  <EndpointSelect endpoint={endpoint} fullpath={`config/base_sub/channel_${chan}/div_cont`} />
+                                </FloatingLabel>
                                 <EndpointCheckbox endpoint={endpoint} fullpath={`config/base_sub/channel_${chan}/use_fixed`} type="switch" label="Use Fixed" />
                               </Stack>
                             </Col>
@@ -250,15 +262,11 @@ const ConfigPage = ({ endpoint }: ConfigPageProps) => {
                         <Row>
                           <Col>
                             <Stack gap={2}>
-                              <InputGroup>
-                                <InputGroup.Text>Pulse Height</InputGroup.Text>
-                                <FloatingLabel label="Minimum">
-                                  <EndpointInput endpoint={endpoint} fullpath={`config/discrimination/channel_${chan}/height_min`} />
-                                </FloatingLabel>
-                                <FloatingLabel label="Maximum">
-                                  <EndpointInput endpoint={endpoint} fullpath={`config/discrimination/channel_${chan}/height_max`} />
-                                </FloatingLabel>
-                              </InputGroup>
+                              <EndpointDoubleSlider endpoint={endpoint} title="Pulse height"
+                                fullpath={[
+                                  `config/discrimination/channel_${chan}/height_min`,
+                                  `config/discrimination/channel_${chan}/height_max`
+                                ]} />
                               <InputGroup>
                                 <InputGroup.Text>Threshold Calculations</InputGroup.Text>
                                 <FloatingLabel label="C Parameter">
@@ -272,15 +280,11 @@ const ConfigPage = ({ endpoint }: ConfigPageProps) => {
                           </Col>
                           <Col>
                             <Stack gap={2}>
-                              <InputGroup>
-                                <InputGroup.Text>Fall Time</InputGroup.Text>
-                                <FloatingLabel label="Minimum">
-                                  <EndpointInput endpoint={endpoint} fullpath={`config/discrimination/channel_${chan}/min_fall`} />
-                                </FloatingLabel>
-                                <FloatingLabel label="Maximum">
-                                  <EndpointInput endpoint={endpoint} fullpath={`config/discrimination/channel_${chan}/max_fall`} />
-                                </FloatingLabel>
-                              </InputGroup>
+                              <EndpointDoubleSlider endpoint={endpoint} title="Fall Time"
+                                fullpath={[
+                                  `config/discrimination/channel_${chan}/min_fall`,
+                                  `config/discrimination/channel_${chan}/max_fall`
+                                ]} />
                               <InputGroup>
                                 <InputGroup.Text>Pulse Count</InputGroup.Text>
                                 <FloatingLabel label="Minimum">
@@ -310,4 +314,4 @@ const ConfigPage = ({ endpoint }: ConfigPageProps) => {
 }
 
 
-export { ConfigPage }
+export { ConfigPage };

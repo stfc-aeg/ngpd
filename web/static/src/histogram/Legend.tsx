@@ -1,6 +1,8 @@
 import type { ScaleSequentialBase } from "d3"
 import { useMemo, useRef } from "react";
 
+import styles from './style.module.css';
+
 interface ColourBarProps {
   colourScale: ScaleSequentialBase<string>;
   min?: number;
@@ -14,7 +16,7 @@ const ColourBar = ({ colourScale, min = 0, max = 1024, step = 100 }: ColourBarPr
 
   const stops = useMemo(() => {
     const stops = [];
-    for (let i = min; i <= max; i+=step) {
+    for (let i = min; i <= max; i += step) {
       stops.push(colourScale(i));
     }
     return stops;
@@ -23,7 +25,13 @@ const ColourBar = ({ colourScale, min = 0, max = 1024, step = 100 }: ColourBarPr
   const gradient = `linear-gradient(90deg, ${stops.join(", ")})`;
 
   return (
-    <div style={{width: "100%", height: "1rem", background: gradient, marginTop: "50px"}}/>
+    <div className={styles.legendDiv}>
+      <div className={styles.legendLabel}>
+        <label>{min}</label>
+        <label>{max}</label>
+      </div>
+      <div style={{ width: "100%", height: "1rem", background: gradient }} />
+    </div>
   )
 
 }

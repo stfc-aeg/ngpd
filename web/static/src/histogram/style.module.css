@@ -94,3 +94,13 @@
     padding-bottom: var(--heatmap-padding);
     padding-right: var(--heatmap-padding);
 }
+
+.legendDiv {
+    margin-top: 50px;
+}
+
+.legendLabel {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+}
