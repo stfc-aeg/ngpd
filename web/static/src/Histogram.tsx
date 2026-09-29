@@ -34,7 +34,7 @@ const Histogram = ({ endpoint, data_endpoint }: HistogramProps) => {
   }
 
   const data = useMemo(() => {
-    const hist = data_endpoint ? data_endpoint.data?.value : endpoint.data?.acq.graph.hist;
+    const hist = data_endpoint?.data?.value ?? endpoint.data?.acq.graph.hist;
 
     const reshaped_data: number[][] = [];
 
@@ -54,7 +54,7 @@ const Histogram = ({ endpoint, data_endpoint }: HistogramProps) => {
     }
 
     return reshaped_data;
-  }, [data_endpoint, endpoint.data?.acq.graph.hist, numCols, numRows]);
+  }, [data_endpoint?.data?.value, endpoint.data?.acq.graph.hist, numCols, numRows]);
 
   const onScatterDrag: MouseEventHandler<SVGCircleElement> = (e) => {
     if (e.buttons & 1) { // test that left click is held
