@@ -45,48 +45,42 @@ const ConfigPage = ({ endpoint }: ConfigPageProps) => {
 
   return (
     <Container fluid="xxl">
+      <Row>
+        <Col>
+          <TitleCard title="Device">
+            <Row>
+              <Col lg="2" md="6">
+                <EndpointButton endpoint={endpoint} fullpath="device/connect" value={true} variant={endpoint.data?.device.connect ? "success" : "primary"}>
+                  {endpoint.data?.device.connect ? "System Configured" : "Configure System"}
+                </EndpointButton>
+              </Col>
+              <Col lg="4" md="6">
+                <FloatingLabel label="Base Board IP Address">
+                  <EndpointInput endpoint={endpoint} fullpath="device/base_ip" />
+                </FloatingLabel>
+              </Col>
+              <Col lg="3" md="6">
+                <FloatingLabel label="Cards in System">
+                  <EndpointInput endpoint={endpoint} fullpath="device/num_cards" />
+                </FloatingLabel>
+              </Col>
+              <Col lg="3" md="6">
+                <FloatingLabel label="Dummy Simulation">
+                  <EndpointSelect endpoint={endpoint} fullpath="device/dummy_system" />
+                </FloatingLabel>
+              </Col>
+            </Row>
+          </TitleCard>
+        </Col>
+      </Row>
       <TitleCard title="Configuration">
-        <Row>
-          <Col>
-            <TitleCard title="Device">
-              <Row>
-                <Col xs="auto">
-                  <EndpointButton endpoint={endpoint} fullpath="device/connect" value={true} variant={endpoint.data?.device.connect ? "success" : "primary"}>
-                    {endpoint.data?.device.connect ? "System Configured" : "Configure System"}
-                  </EndpointButton>
-                </Col>
-                <Col>
-                  <InputGroup>
-                    <InputGroup.Text>Base Board IP Address</InputGroup.Text>
-                    <EndpointInput endpoint={endpoint} fullpath="device/base_ip" />
-                  </InputGroup>
-                </Col>
-                <Col xs="auto">
-                  <InputGroup>
-                    <InputGroup.Text>Cards in System</InputGroup.Text>
-                    <EndpointInput endpoint={endpoint} fullpath="device/num_cards" />
-                  </InputGroup>
-                </Col>
-                <Col xs="auto">
-                  <InputGroup>
-                    <InputGroup.Text>Dummy Simulation</InputGroup.Text>
-                    <EndpointDropdown endpoint={endpoint} fullpath="device/dummy_system" />
-                  </InputGroup>
-                </Col>
-              </Row>
-            </TitleCard>
-          </Col>
-        </Row>
-        <Row style={{ marginTop: "16px" }}>
-          <hr />
-        </Row>
         <Row>
           <Col>
             <Tabs defaultActiveKey={0} onSelect={(k) => setChan(parseInt(k ?? "0") as typeof channels[0])}>
               {channels.map((chan) => (
                 <Tab eventKey={chan} title={`Channel ${chan}`} style={{ marginTop: "5px" }}>
                   <Row>
-                    <Col>
+                    <Col lg="6" md="12">
                       <Stack>
                         <TitleCard title={<ConfigCardHeader title="Analog Input" onClick={() => setAllConfig("analog")} />}>
                           <Row>
@@ -104,7 +98,7 @@ const ConfigPage = ({ endpoint }: ConfigPageProps) => {
                         </TitleCard>
                         <TitleCard title={<ConfigCardHeader title="Filter" onClick={() => setAllConfig("filter")} />}>
                           <Row>
-                            <Col xs={4}>
+                            <Col xs="4">
                               <FloatingLabel label="Filter Type">
                                 <EndpointSelect endpoint={endpoint} fullpath={`config/filter/channel_${chan}/type`} />
                               </FloatingLabel>
@@ -149,27 +143,27 @@ const ConfigPage = ({ endpoint }: ConfigPageProps) => {
                         <TitleCard title={<ConfigCardHeader title="Tail Measurement" onClick={() => setAllConfig("tail_measure")} />}>
                           <Row>
                             <Col>
-                              <Stack gap={2}>
-                                <Row>
-                                  <Col xs={5}>
-                                    <FloatingLabel label="Delay">
-                                      <EndpointInput endpoint={endpoint} fullpath={`config/tail_measure/channel_${chan}/delay`} />
-                                    </FloatingLabel>
-                                  </Col>
-                                  <Col>
-                                    <FloatingLabel label="Sample Number">
-                                      <EndpointInput endpoint={endpoint} fullpath={`config/tail_measure/channel_${chan}/num_sample`} />
-                                    </FloatingLabel>
-                                  </Col>
-                                </Row>
+                              <Row>
+                                <Col xs="5">
+                                  <FloatingLabel label="Delay">
+                                    <EndpointInput endpoint={endpoint} fullpath={`config/tail_measure/channel_${chan}/delay`} />
+                                  </FloatingLabel>
+                                </Col>
+                                <Col>
+                                  <FloatingLabel label="Sample Number">
+                                    <EndpointInput endpoint={endpoint} fullpath={`config/tail_measure/channel_${chan}/num_sample`} />
+                                  </FloatingLabel>
+                                </Col>
+                              </Row>
+                              <Row className="py-2">
                                 <Col>
                                   <FloatingLabel label="Fall Time Fraction">
                                     <EndpointInput endpoint={endpoint} fullpath={`config/tail_measure/channel_${chan}/fall_time_frac`} />
                                   </FloatingLabel>
                                 </Col>
-                              </Stack>
+                              </Row>
                             </Col>
-                            <Col xs="auto" style={{ alignContent: "center" }}>
+                            <Col sm="auto" lg="12" xl="auto" style={{ alignContent: "center" }}>
                               <Form>
                                 <EndpointCheckbox endpoint={endpoint} fullpath={`config/tail_measure/channel_${chan}/enable_tail_subtract`}
                                   type="switch" label="Enable Tail Subtract" />
@@ -209,7 +203,7 @@ const ConfigPage = ({ endpoint }: ConfigPageProps) => {
                         </TitleCard>
                         <TitleCard title={<ConfigCardHeader title="Differential Trigger" onClick={() => setAllConfig("trigger")} />}>
                           <Row>
-                            <Col md={3}>
+                            <Col xl="3" lg="6" md="3" xs="6" className="pb-2">
                               <Stack gap={2}>
                                 <FloatingLabel label="Threshold">
                                   <EndpointInput endpoint={endpoint} fullpath={`config/trigger/channel_${chan}/threshold`} />
@@ -219,7 +213,7 @@ const ConfigPage = ({ endpoint }: ConfigPageProps) => {
                                 </FloatingLabel>
                               </Stack>
                             </Col>
-                            <Col>
+                            <Col className="pb-2">
                               <Stack gap={2}>
                                 <FloatingLabel label="Data Delay">
                                   <EndpointInput endpoint={endpoint} fullpath={`config/trigger/channel_${chan}/data_delay`} />
@@ -229,7 +223,7 @@ const ConfigPage = ({ endpoint }: ConfigPageProps) => {
                                 </FloatingLabel>
                               </Stack>
                             </Col>
-                            <Col md={6}>
+                            <Col xl="6" lg="12" md="6" className="pb-2">
                               <Stack gap={2}>
                                 <InputGroup>
                                   <InputGroup.Text>Signal A</InputGroup.Text>
@@ -260,43 +254,57 @@ const ConfigPage = ({ endpoint }: ConfigPageProps) => {
                     <Col>
                       <TitleCard title={<ConfigCardHeader title="Neutron/Gamma Discrimination" onClick={() => setAllConfig("discrimination")} />}>
                         <Row>
-                          <Col>
-                            <Stack gap={2}>
-                              <EndpointDoubleSlider endpoint={endpoint} title="Pulse height"
-                                fullpath={[
-                                  `config/discrimination/channel_${chan}/height_min`,
-                                  `config/discrimination/channel_${chan}/height_max`
-                                ]} />
-                              <InputGroup>
-                                <InputGroup.Text>Threshold Calculations</InputGroup.Text>
-                                <FloatingLabel label="C Parameter">
-                                  <EndpointInput endpoint={endpoint} fullpath={`config/discrimination/channel_${chan}/threshold_c`} />
-                                </FloatingLabel>
-                                <FloatingLabel label="M Parameter">
-                                  <EndpointInput endpoint={endpoint} fullpath={`config/discrimination/channel_${chan}/threshold_m`} />
-                                </FloatingLabel>
-                              </InputGroup>
-                            </Stack>
+                          <Col lg="9" md="12">
+                            <Row>
+                              <Col lg="6" md="12">
+                                <EndpointDoubleSlider endpoint={endpoint} title="Pulse height"
+                                  fullpath={[
+                                    `config/discrimination/channel_${chan}/height_min`,
+                                    `config/discrimination/channel_${chan}/height_max`
+                                  ]} />
+                              </Col>
+                              <Col>
+                                <EndpointDoubleSlider endpoint={endpoint} title="Fall Time"
+                                  fullpath={[
+                                    `config/discrimination/channel_${chan}/min_fall`,
+                                    `config/discrimination/channel_${chan}/max_fall`
+                                  ]} />
+                              </Col>
+                            </Row>
+                            <Row>
+                              <Col lg="8" md="12" className="mb-2">
+                                <InputGroup>
+                                  <InputGroup.Text>Threshold Calculations</InputGroup.Text>
+                                  <FloatingLabel label="Intercept">
+                                    <EndpointInput endpoint={endpoint} fullpath={`config/discrimination/channel_${chan}/threshold_c`} />
+                                  </FloatingLabel>
+                                  <FloatingLabel label="Gradient">
+                                    <EndpointInput endpoint={endpoint} fullpath={`config/discrimination/channel_${chan}/threshold_m`} />
+                                  </FloatingLabel>
+                                </InputGroup>
+                              </Col>
+                              <Col className="mb-2">
+                                <InputGroup>
+                                  <InputGroup.Text>Pulse Count</InputGroup.Text>
+                                  <FloatingLabel label="Minimum">
+                                    <EndpointInput endpoint={endpoint} fullpath={`config/discrimination/channel_${chan}/min_count`} />
+                                  </FloatingLabel>
+                                </InputGroup>
+                              </Col>
+                            </Row>
                           </Col>
-                          <Col>
-                            <Stack gap={2}>
-                              <EndpointDoubleSlider endpoint={endpoint} title="Fall Time"
-                                fullpath={[
-                                  `config/discrimination/channel_${chan}/min_fall`,
-                                  `config/discrimination/channel_${chan}/max_fall`
-                                ]} />
-                              <InputGroup>
-                                <InputGroup.Text>Pulse Count</InputGroup.Text>
-                                <FloatingLabel label="Minimum">
-                                  <EndpointInput endpoint={endpoint} fullpath={`config/discrimination/channel_${chan}/min_count`} />
-                                </FloatingLabel>
-                              </InputGroup>
-                            </Stack>
-                          </Col>
-                          <Col xl="auto" md={12} style={{ alignContent: "center" }}>
-                            <EndpointCheckbox endpoint={endpoint} fullpath={`config/discrimination/channel_${chan}/adaptive`} type="switch" label="Adaptive Tail Sum" />
-                            <EndpointCheckbox endpoint={endpoint} fullpath={`config/discrimination/channel_${chan}/enable_tail_sum`} type="switch" label="Measure Tail Sum" />
-                            <EndpointCheckbox endpoint={endpoint} fullpath={`config/discrimination/channel_${chan}/enable_fall_time`} type="switch" label="Measure Fall Time" />
+                          <Col lg="3" md="12" style={{ alignContent: "center" }}>
+                            <Row>
+                              <Col lg="12" md="auto">
+                                <EndpointCheckbox endpoint={endpoint} fullpath={`config/discrimination/channel_${chan}/adaptive`} type="switch" label="Adaptive Tail Sum" />
+                              </Col>
+                              <Col lg="12" md="auto">
+                                <EndpointCheckbox endpoint={endpoint} fullpath={`config/discrimination/channel_${chan}/enable_tail_sum`} type="switch" label="Measure Tail Sum" />
+                              </Col>
+                              <Col lg="12" md="auto">
+                                <EndpointCheckbox endpoint={endpoint} fullpath={`config/discrimination/channel_${chan}/enable_fall_time`} type="switch" label="Measure Fall Time" />
+                              </Col>
+                            </Row>
                           </Col>
                         </Row>
                       </TitleCard>
