@@ -66,7 +66,6 @@ class NgpdChannel:
     def set_analog_gain(self, value: int):
         """Set the ADC Gain."""
         vals = self.ngpd.read_dga_gain()
-        logging.debug(f"ANALOG GAIN VALS: {vals}")
         vals[self.chan] = value
         self._analog_gain = value
         self.ngpd.write_dga_gain(0, vals)
