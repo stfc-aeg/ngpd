@@ -125,15 +125,31 @@ class NgpdChannel:
             raise NgpdLibException(f"Invalid Filter Setting {setting}")
 
         type = self.filter.filt_type
-        if type == FilterType.RECTANGLE:
+        if type == FilterType.UNKNOWN:
+            pass
+        elif type == FilterType.RECTANGLE:
             # TODO: check filter width in appropriate range
-            self.ngpd.filter_load_rect(self.chan, self.filter.iarg1)
+            if 1 <= self.filter.iarg1 <= 101:
+                self.ngpd.filter_load_rect(self.chan, self.filter.iarg1)
+            else:
+                logging.warning(f"{self.filter.iarg1} out of range 1 -> 101 for type Rectangle")
         elif type == FilterType.GAUSSIAN:
-            self.ngpd.filter_load_gaus(self.chan, self.filter.darg)
+            if 1 <= self.filter.darg <= 25:
+                self.ngpd.filter_load_gaus(self.chan, self.filter.darg)
+            else:
+                logging.warning(f"{self.filter.darg} out of range 1 -> 25 for type Gaussian")
         elif type == FilterType.EXPONENTIAL:
-            self.ngpd.filter_load_exp(self.chan, self.filter.darg)
+            if 1 <= self.filter.darg <= 25:
+                self.ngpd.filter_load_exp(self.chan, self.filter.darg)
+            else:
+                logging.warning(f"{self.filter.darg} out of range 1 -> 25 for type Gaussian")
         elif type == FilterType.TRAPEZOIDAL:
-            self.ngpd.filter_load_trapezoid(self.chan, self.filter.iarg1, self.filter.iarg2)
+            if self.filter.iarg2 < self.filter.iarg1:
+                logging.warning(f"Top Width must be smaller than bottom width")
+            elif 0 <= self.filter.iarg1 <= 100 and 0 <= self.filter.iarg2 <= 100:
+                self.ngpd.filter_load_trapezoid(self.chan, self.filter.iarg1, self.filter.iarg2)
+            else:
+                logging.warning(f"({self.filter.iarg1}, {self.filter.iarg2}) out of range (0->100, 0->100) for type Trapezoidal")
         else:
             raise NgpdLibException(f"Invalid Filter Type {type}")
 

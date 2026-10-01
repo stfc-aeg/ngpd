@@ -1,6 +1,6 @@
-import { EndpointButton, EndpointCheckbox, EndpointDropdown, EndpointInput, TitleCard, useAdapterEndpoint, type AdapterEndpoint } from "@dssg/odin-react";
+import { EndpointButton, EndpointCheckbox, EndpointDropdown, EndpointInput, EndpointSelect, TitleCard, useAdapterEndpoint, type AdapterEndpoint } from "@dssg/odin-react";
 import type { EndpointParams } from "./types";
-import { ButtonGroup, Col, Container, DropdownItem, FloatingLabel, Form, InputGroup, Row, Stack } from "react-bootstrap";
+import { Badge, Button, ButtonGroup, Col, Container, DropdownItem, FloatingLabel, Form, InputGroup, ProgressBar, Row, Stack } from "react-bootstrap";
 import { Histogram } from "./Histogram";
 
 interface GraphPageProps {
@@ -34,12 +34,12 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
   )
 
   return (
-    <Container fluid="xxl">
+    <Container>
       <Row>
         <Col>
           <TitleCard title={Controls}>
             <Stack gap={2}>
-              <Histogram endpoint={endpoint} data_endpoint={data_endpoint}/>
+              <Histogram endpoint={endpoint} data_endpoint={data_endpoint} />
 
             </Stack>
           </TitleCard>
@@ -50,65 +50,104 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
           <TitleCard title="Histogram Controls">
             <Row>
               <Col>
-                <Form.Label column>Pulse Height</Form.Label>
-                <InputGroup>
-                  <FloatingLabel label="Bit Shift">
-                    <EndpointInput endpoint={endpoint} fullpath="config/histogram/shift_height" size="sm" />
-                  </FloatingLabel>
-                  <EndpointDropdown endpoint={endpoint} fullpath="config/histogram/num_bins_height" title={`Num Bins: ${endpoint.data?.config.histogram.num_bins_height ?? 0}`} />
-                </InputGroup>
+                <Row>
+                  <Form.Label column>Pulse Height</Form.Label>
+                  <Col xxl={{ order: "last", span: "auto" }} xl={{ order: "first" }}>
+                    <div style={{ paddingTop: "26px" }} />
+                  </Col>
+                </Row>
               </Col>
               <Col>
                 <Row>
                   <Form.Label column>Tail Sum</Form.Label>
-                  <Col xs="auto" style={{ alignContent: "center" }}><EndpointCheckbox endpoint={endpoint} fullpath="config/histogram/separate_ngp" type="switch" label="Separate NGP" /></Col>
+                  <Col xxl={{ order: "last", span: "auto" }} xs={{ order: "first" }} style={{ alignContent: "center" }}><EndpointCheckbox endpoint={endpoint} fullpath="config/histogram/separate_ngp" type="switch" label="Separate NGP" /></Col>
                 </Row>
+              </Col>
+            </Row>
+            <Row>
+              <Col>
+                <InputGroup>
+                  <FloatingLabel label="Bit Shift">
+                    <EndpointInput endpoint={endpoint} fullpath="config/histogram/shift_height" size="sm" />
+                  </FloatingLabel>
+                  <FloatingLabel label="Num Bins">
+                    <EndpointSelect endpoint={endpoint} fullpath="config/histogram/num_bins_height" />
+                  </FloatingLabel>
+                </InputGroup>
+              </Col>
+              <Col>
                 <InputGroup>
                   <FloatingLabel label="Bit Shift">
                     <EndpointInput endpoint={endpoint} fullpath="config/histogram/shift_tailsum" size="sm" />
                   </FloatingLabel>
-                  <EndpointDropdown endpoint={endpoint} fullpath="config/histogram/num_bins_tailsum" title={`Num Bins: ${endpoint.data?.config.histogram.num_bins_tailsum ?? 0}`} />
+                  <FloatingLabel label="Num Bins">
+                    <EndpointSelect endpoint={endpoint} fullpath="config/histogram/num_bins_tailsum" />
+                  </FloatingLabel>
                 </InputGroup>
               </Col>
             </Row>
           </TitleCard>
         </Col>
-        <Col>
+        <Col lg="6" md="12">
           <TitleCard title="Run Controls">
             <Row>
               <Col>
-                <Stack gap={2}>
-                  <InputGroup>
-                    <InputGroup.Text>Num Cycles</InputGroup.Text>
-                    <EndpointInput endpoint={endpoint} fullpath="acq/num_cycles" />
-                  </InputGroup>
-                  <Form>
-                    <EndpointCheckbox endpoint={endpoint} fullpath="acq/scope_setup" type="switch" label="Setup Scope" />
-                    <EndpointCheckbox endpoint={endpoint} fullpath="acq/scope_run" type="switch" label="Run Scope" />
-                  </Form>
-                </Stack>
+                <FloatingLabel label="Num Cycles">
+                  <EndpointInput endpoint={endpoint} fullpath="acq/num_cycles" />
+                </FloatingLabel>
               </Col>
               <Col>
-                <Stack gap={2}>
-                  <InputGroup>
-                    <InputGroup.Text>Frame Length (s)</InputGroup.Text>
-                    <EndpointInput endpoint={endpoint} fullpath="acq/frame_length" />
-                  </InputGroup>
-                  <ButtonGroup>
-                    <EndpointButton endpoint={endpoint} fullpath="acq/run" value={true} disabled={endpoint.data?.acq.state.status == "running"}>
-                      Start
-                    </EndpointButton>
-                    <EndpointButton endpoint={endpoint} fullpath="acq/run" value={true} disabled={endpoint.data?.acq.state.status != "running"} variant="danger">
-                      Stop
-                    </EndpointButton>
-                  </ButtonGroup>
-                </Stack>
+                <FloatingLabel label="Frame Length (seconds)">
+                  <EndpointInput endpoint={endpoint} fullpath="acq/frame_length" />
+                </FloatingLabel>
+              </Col>
+
+
+            </Row>
+            <Row>
+              <Col xl="4" className="mt-2">
+                <Row>
+                  <Col>
+                    <EndpointCheckbox endpoint={endpoint} fullpath="acq/scope_setup" type="switch" label="Setup Scope" />
+                  </Col>
+                  <Col>
+                    <EndpointCheckbox endpoint={endpoint} fullpath="acq/scope_run" type="switch" label="Run Scope" />
+                  </Col>
+                </Row>
+              </Col>
+              <Col xl="8" className="mt-2">
+                <InputGroup>
+                  <FloatingLabel label="Playback File">
+                    <EndpointSelect endpoint={endpoint} fullpath={"config/playback/file_name"} />
+                  </FloatingLabel>
+                  <EndpointButton endpoint={endpoint} fullpath="config/playback/enabled" value={!endpoint.data?.config.playback.enabled}
+                    variant={endpoint.data?.config.playback.enabled ? "primary" : "outline-primary"}>
+                    {endpoint.data?.config.playback.enabled ? "Disable Playback" : "Enable Playback"}
+                  </EndpointButton>
+                </InputGroup>
               </Col>
             </Row>
-          </TitleCard>
-        </Col>
-      </Row>
-    </Container>
+            <Row className="mt-2">
+              <Col>
+                <ButtonGroup size="lg" style={{ width: "100%" }}>
+                  <EndpointButton endpoint={endpoint} fullpath="acq/run" value={true} disabled={endpoint.data?.acq.state.status == "running"}>
+                    Start
+                  </EndpointButton>
+                  <EndpointButton endpoint={endpoint} fullpath="acq/run" value={false} disabled={endpoint.data?.acq.state.status != "running"} variant="danger">
+                    Stop
+                  </EndpointButton>
+                </ButtonGroup>
+              </Col>
+            </Row>
+            <Row className="mt-2">
+              <Col>
+              <ProgressBar label={endpoint.data?.acq.state.status} now={endpoint.data?.acq.state.current} max={endpoint.data?.acq.state.total}/>
+              </Col>
+            </Row>
+          </TitleCard >
+        </Col >
+      </Row >
+    </Container >
   )
 }
 
