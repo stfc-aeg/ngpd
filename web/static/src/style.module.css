@@ -1,0 +1,23 @@
+
+.thermometerSuccess label, .thermometerError label {
+    color: white !important;
+}
+
+.thermometerWarn label {
+    color: black;
+}
+
+.thermometerSuccess input, span.thermometerSuccess {
+    color: white;
+    background-color: var(--bs-success);
+}
+
+.thermometerWarn input, span.thermometerWarn {
+    color: black;
+    background-color: var(--bs-warning);
+}
+
+.thermometerError input, span.thermometerError {
+    color: white;
+    background-color: var(--bs-danger);
+}

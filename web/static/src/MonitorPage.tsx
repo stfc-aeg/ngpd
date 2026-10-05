@@ -1,8 +1,9 @@
 import { EndpointInput, TitleCard, type AdapterEndpoint } from "@dssg/odin-react";
-import type { CSSProperties } from "react";
 import { Col, Container, FloatingLabel, Form, InputGroup, ListGroup, Row } from "react-bootstrap";
 import { CheckCircle, ExclamationCircle } from 'react-bootstrap-icons';
 import type { EndpointParams } from "./types";
+
+import styles from './style.module.css';
 
 interface MonitorPageProps {
   endpoint: AdapterEndpoint<EndpointParams>;
@@ -17,16 +18,14 @@ interface ThemometerProps {
 
 const Themometer = ({ current, max = 1000, label }: ThemometerProps) => {
 
-  const style_prefix = max < 0 ? "success" : current < max * 0.9 ? "success" : current < max ? "warning" : "danger";
-  const Icon = style_prefix == "danger" ? <ExclamationCircle /> : <CheckCircle />;
-
-  const style: CSSProperties = { backgroundColor: `var(--bs-${style_prefix}-bg-subtle)`, borderColor: `var(--bs-${style_prefix}-border-subtle)`, color: `var(--bs-${style_prefix}-text-emphasis)` };
+  const style_prefix = max < 0 ? "thermometerSuccess" : current < max * 0.9 ? "thermometerSuccess" : current < max ? "thermometerWarn" : "thermometerError";
+  const Icon = style_prefix == "thermometerError" ? <ExclamationCircle /> : <CheckCircle />;
 
   return (
     <>
-      <InputGroup.Text style={style}>{Icon}</InputGroup.Text>
-      <FloatingLabel label={label} >
-        <Form.Control value={`${current.toFixed(2)}°c`} disabled  style={style}/>
+      <InputGroup.Text className={styles[style_prefix]}>{Icon}</InputGroup.Text>
+      <FloatingLabel label={label} className={styles[style_prefix]} >
+        <Form.Control value={`${current.toFixed(2)}°c`} readOnly />
       </FloatingLabel>
     </>
   )
