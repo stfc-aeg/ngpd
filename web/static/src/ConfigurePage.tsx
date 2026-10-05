@@ -133,14 +133,14 @@ const ConfigPage = ({ endpoint }: ConfigPageProps) => {
               <Col>
                 <Tabs defaultActiveKey={0} unmountOnExit >
                   {channels.map((chan) => (
-                    <Tab eventKey={chan} title={`Channel ${chan}`} style={{ marginTop: "5px" }}>
+                    <Tab eventKey={chan} key={`${chan}_tab`} title={`Channel ${chan}`} style={{ marginTop: "5px" }}>
                       <Row>
                         <Col lg="6" md="12">
                           <Stack>
                             <ConfigControls endpoint={endpoint} chan={chan} title="Analog Input" configPath="analog">
                               <Row>
                                 <Col>
-                                  <FloatingLabel label="Gain">
+                                  <FloatingLabel label="Attenuation">
                                     <EndpointInput endpoint={endpoint} fullpath={`config/analog/channel_${chan}/gain`} name="gain" />
                                   </FloatingLabel>
                                 </Col>

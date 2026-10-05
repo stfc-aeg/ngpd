@@ -120,7 +120,7 @@ class NgpdData:
         self.pulse_height_data = np.zeros(self.data_shape)
 
         self.chan = 0
-        self.select_display: Literal["neutron", "gamma", "pileup", "all"] = "neutron"
+        self.select_display: Literal["neutron", "gamma", "pileup", "all"] = "all"
 
     def configure(self, ngpd: PyNgpd):
         """Configure the data handler to use the ngpd class object."""

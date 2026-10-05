@@ -1,8 +1,8 @@
-import { EndpointButton, EndpointCheckbox, EndpointDropdown, EndpointInput, EndpointSelect, OdinGraph, TitleCard, useAdapterEndpoint, type AdapterEndpoint } from "@dssg/odin-react";
-import type { EndpointParams } from "./types";
-import { Badge, Button, ButtonGroup, Col, Container, DropdownItem, FloatingLabel, Form, InputGroup, ProgressBar, Row, Stack } from "react-bootstrap";
+import { EndpointButton, EndpointCheckbox, EndpointDropdown, EndpointInput, EndpointSelect, OdinGraph, TitleCard, type AdapterEndpoint } from "@dssg/odin-react";
+import { useEffect, useState } from "react";
+import { ButtonGroup, Col, Container, DropdownItem, FloatingLabel, Form, InputGroup, ProgressBar, Row } from "react-bootstrap";
 import { Histogram } from "./Histogram";
-import { useEffect, useMemo, useState } from "react";
+import { channels, type EndpointParams } from "./types";
 
 interface GraphPageProps {
   endpoint: AdapterEndpoint<EndpointParams>;
@@ -16,9 +16,9 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
   const [pulseheight_data, setPulseheight_data] = useState<number[][]>([]);
 
   const shape = endpoint.data?.acq.graph.data_shape ?? [1, 1024, 1024];
-  const { numCols, numRows } = {
-    numCols: shape[1],
-    numRows: shape[2]
+  const { height_bins, tailsum_bins } = {
+    height_bins: shape[2],
+    tailsum_bins: shape[1]
   }
 
   useEffect(() => {
@@ -29,10 +29,9 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
         try {
           const tmp = Uint8Array.fromBase64(tailsum);
           const buf = new Uint32Array(tmp.buffer);
-          console.log(`Tailsum Buf Length: ${buf.length}`);
 
-          for (let i = 0; i < buf.length; i += numRows) {
-            reshaped_data.push(Array.from(buf.slice(i, i + numCols)))
+          for (let i = 0; i < buf.length; i += tailsum_bins) {
+            reshaped_data.push(Array.from(buf.slice(i, i + tailsum_bins)))
           }
 
         } catch (err) {
@@ -47,7 +46,7 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
 
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [numCols, numRows, data_endpoint.data?.value])
+  }, [height_bins, tailsum_bins, data_endpoint.data?.value])
 
   useEffect(() => {
     const fetch_data = async () => {
@@ -57,10 +56,9 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
         try {
           const tmp = Uint8Array.fromBase64(pulseheight);
           const buf = new Uint32Array(tmp.buffer);
-          console.log(`PulseHeight Buf Length: ${buf.length}`);
 
-          for (let i = 0; i < buf.length; i += numCols) {
-            reshaped_data.push(Array.from(buf.slice(i, i + numRows)))
+          for (let i = 0; i < buf.length; i += height_bins) {
+            reshaped_data.push(Array.from(buf.slice(i, i + height_bins)))
           }
 
         } catch (err) {
@@ -75,15 +73,15 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
 
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [numCols, numRows, data_endpoint.data?.value])
+  }, [height_bins, tailsum_bins, data_endpoint.data?.value])
 
   const Controls = (
     <Row>
       <Col>
         <InputGroup>
           <EndpointDropdown endpoint={endpoint} fullpath="acq/graph/channel" title={`Channel ${endpoint.data?.acq.graph.channel}`} variant="secondary">
-            {[0, 1, 2, 3, 4, 5, 6, 7].map((chan) => (
-              <DropdownItem eventKey={chan} active={endpoint.data?.acq.graph.channel == chan}>{chan}</DropdownItem>
+            {channels.map((chan) => (
+              <DropdownItem eventKey={chan} key={chan} active={endpoint.data?.acq.graph.channel == chan}>{chan}</DropdownItem>
             ))}
           </EndpointDropdown>
           <EndpointDropdown endpoint={endpoint} fullpath="acq/graph/signal" title={`Signal: ${endpoint.data?.acq.graph.signal}`} />
@@ -227,4 +225,4 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
   )
 }
 
-export { GraphPage }
+export { GraphPage };
