@@ -234,8 +234,14 @@ class NgpdController(BaseController):
         )
 
     def initialize(self, adapters):
+        """Run when all adapters in the system have loaded.
+
+        Allows for inter adapter communication, or other setup that needs to wait for all adapters to load.
+        """
         self.adapters = adapters
         logging.debug(f"Adapters initialized: {list(adapters.keys())}")
+        if self.options.get("auto_connect"):
+            self.device.configure()
         # Add to param tree if needed post-initialization
 
     def cleanup(self):
