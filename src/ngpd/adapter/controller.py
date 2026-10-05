@@ -188,14 +188,20 @@ class NgpdController(BaseController):
                         "description": "Histogram Data from selected channel, encoded as a Base64 string"
                     },
                 ),
-                # "tailsum": (
-                #     self.device.dataHandler.get_tailsum,
-                #     None,
-                #     {
-                #         "description": "Tailsum Scatterplot data encoded as Base64 string"
-                #     },
-                # ),
-                # "pulse_height": (self.device.dataHandler.get_pulse_height, None),
+                "tailsum": (
+                    lambda: "Directly access this Param to get the actual data",
+                    None,
+                    {
+                        "description": "Tailsum Scatterplot data encoded as Base64 string"
+                    },
+                ),
+                "pulse_height": (
+                    lambda: "Directly access this Param to get the actual data",
+                    None,
+                    {
+                        "description": "Pulseheight Scatterplot data encoded as Base64 string"
+                    }
+                ),
                 "refresh_data": (
                     None,
                     lambda _: self.device.dataHandler.refresh_data(),
@@ -253,6 +259,10 @@ class NgpdController(BaseController):
             # This method is hacky and not great? but it does work.
             if path == "acq/graph/hist":
                 return {"value": self.device.dataHandler.get_data()}
+            elif path == "acq/graph/tailsum":
+                return {"value": self.device.dataHandler.get_tailsum()}
+            elif path == "acq/graph/pulse_height":
+                return {"value": self.device.dataHandler.get_pulse_height()}
             else:
                 return self.param_tree.get(path, with_metadata)
         except (ParameterTreeError, NgpdLibException) as error:

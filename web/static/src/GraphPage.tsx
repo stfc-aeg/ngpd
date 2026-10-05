@@ -1,7 +1,8 @@
-import { EndpointButton, EndpointCheckbox, EndpointDropdown, EndpointInput, EndpointSelect, TitleCard, useAdapterEndpoint, type AdapterEndpoint } from "@dssg/odin-react";
+import { EndpointButton, EndpointCheckbox, EndpointDropdown, EndpointInput, EndpointSelect, OdinGraph, TitleCard, useAdapterEndpoint, type AdapterEndpoint } from "@dssg/odin-react";
 import type { EndpointParams } from "./types";
 import { Badge, Button, ButtonGroup, Col, Container, DropdownItem, FloatingLabel, Form, InputGroup, ProgressBar, Row, Stack } from "react-bootstrap";
 import { Histogram } from "./Histogram";
+import { useEffect, useMemo, useState } from "react";
 
 interface GraphPageProps {
   endpoint: AdapterEndpoint<EndpointParams>;
@@ -9,6 +10,72 @@ interface GraphPageProps {
 }
 
 const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
+
+
+  const [tailsum_data, setTailsum_data] = useState<number[][]>([]);
+  const [pulseheight_data, setPulseheight_data] = useState<number[][]>([]);
+
+  const shape = endpoint.data?.acq.graph.data_shape ?? [1, 1024, 1024];
+  const { numCols, numRows } = {
+    numCols: shape[1],
+    numRows: shape[2]
+  }
+
+  useEffect(() => {
+    const fetch_data = async () => {
+      const tailsum = (await endpoint.get<{ "value": string }>("acq/graph/tailsum")).value;
+      const reshaped_data: number[][] = [];
+      if (tailsum) {
+        try {
+          const tmp = Uint8Array.fromBase64(tailsum);
+          const buf = new Uint32Array(tmp.buffer);
+          console.log(`Tailsum Buf Length: ${buf.length}`);
+
+          for (let i = 0; i < buf.length; i += numRows) {
+            reshaped_data.push(Array.from(buf.slice(i, i + numCols)))
+          }
+
+        } catch (err) {
+          console.error(err);
+        }
+      }
+
+      setTailsum_data(reshaped_data);
+    }
+
+    fetch_data();
+
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [numCols, numRows, data_endpoint.data?.value])
+
+  useEffect(() => {
+    const fetch_data = async () => {
+      const pulseheight = (await endpoint.get<{ "value": string }>("acq/graph/pulse_height")).value;
+      const reshaped_data: number[][] = [];
+      if (pulseheight) {
+        try {
+          const tmp = Uint8Array.fromBase64(pulseheight);
+          const buf = new Uint32Array(tmp.buffer);
+          console.log(`PulseHeight Buf Length: ${buf.length}`);
+
+          for (let i = 0; i < buf.length; i += numCols) {
+            reshaped_data.push(Array.from(buf.slice(i, i + numRows)))
+          }
+
+        } catch (err) {
+          console.error(err);
+        }
+      }
+
+      setPulseheight_data(reshaped_data);
+    }
+
+    fetch_data();
+
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [numCols, numRows, data_endpoint.data?.value])
 
   const Controls = (
     <Row>
@@ -38,10 +105,19 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
       <Row>
         <Col>
           <TitleCard title={Controls}>
-            <Stack gap={2}>
-              <Histogram endpoint={endpoint} data_endpoint={data_endpoint} />
-
-            </Stack>
+            <Row>
+              <Col>
+                <Histogram endpoint={endpoint} data_endpoint={data_endpoint} />
+              </Col>
+            </Row>
+            <Row>
+              <Col xs="12" md="12" lg="6">
+                <OdinGraph data={pulseheight_data} series_names={["Neutrons", "Gamma", "Pileup", "All"]} title="Pulse Height" />
+              </Col>
+              <Col xs="12" md="12" lg="6">
+                <OdinGraph data={tailsum_data} series_names={["Neutrons", "Gamma", "Pileup", "All"]} title="Tail Sum" />
+              </Col>
+            </Row>
           </TitleCard>
         </Col>
       </Row>
@@ -141,7 +217,7 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
             </Row>
             <Row className="mt-2">
               <Col>
-              <ProgressBar label={endpoint.data?.acq.state.status} now={endpoint.data?.acq.state.current} max={endpoint.data?.acq.state.total}/>
+                <ProgressBar label={endpoint.data?.acq.state.status} now={endpoint.data?.acq.state.current} max={endpoint.data?.acq.state.total} />
               </Col>
             </Row>
           </TitleCard >

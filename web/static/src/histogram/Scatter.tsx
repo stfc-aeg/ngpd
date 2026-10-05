@@ -113,17 +113,17 @@ const Scatter = ({ data, xRange, yRange, onMouseDrag, onMouseUp, colors = scheme
               <path
                 d={lineBuilder(line_data) ?? ""}
                 stroke={colourScale(key)}
-                strokeDasharray="10 2 5 2"
+                strokeDasharray="2"
                 strokeOpacity={0.7}
                 fill="none"
-                strokeWidth={4}
+                strokeWidth={2}
               />
               {
                 line_data.map((coord, i) => (
                   <circle key={i}
                     cx={xScale(coord[0])}
                     cy={yScale(coord[1])}
-                    r={10}
+                    r={5}
                     stroke={colourScale(key)}
                     fill={colourScale(key)}
                     onMouseEnter={mouseEnter}
