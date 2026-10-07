@@ -59,7 +59,7 @@ const Scatter = ({ data, xRange, yRange, onMouseDrag, onMouseUp, colors = scheme
     setHoverFromCircle(circle);
   }
 
-  const mouseLeave: MouseEventHandler<SVGCircleElement> = (e) => {
+  const mouseLeave: MouseEventHandler<SVGCircleElement> = () => {
     setHovered(null);
   }
 

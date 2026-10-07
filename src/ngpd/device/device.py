@@ -58,7 +58,9 @@ class NgpdDevice:
         self.dummy_level = DummyLevel[options.get("dummy_level", "none").upper()]
 
         self.playback_file_dir = options.get("playback_dir", "web/config/files")
+        self.config_file_dir = options.get("config_dir", "web/config/files")
         self.selected_playback = ""
+        self.selected_config_file = ""
         self.enable_playback = bool(self.dummy_level & DummyLevel.ADC)
         self.allowed_playback = [""]
         if path.exists(self.playback_file_dir) and path.isdir(self.playback_file_dir):
@@ -508,6 +510,22 @@ class NgpdDevice:
                     },
                 ),
             },
+            "settings_file": {
+                "save": (
+                    lambda: self.selected_config_file,
+                    lambda file: self.save_config(file),
+                    {
+                        "description": "Save the current system config to a HDF5 file"
+                    }
+                ),
+                "load": (
+                    lambda: self.selected_config_file,
+                    lambda file: self.load_config(file),
+                    {
+                        "description": "Load the config from the selected HDF5 file"
+                    }
+                )
+            }
         }
 
     def configure(self):
@@ -616,3 +634,15 @@ class NgpdDevice:
             self.acquisition.start()
         else:
             self.acquisition.stop()
+
+    @UsesNgpdLibrary
+    def save_config(self, filename: str):
+        """Save the Config settings to a HDF5 file."""
+        self.selected_config_file = filename
+        self.ngpd.save_settings(path.join(self.config_file_dir, filename))
+
+    @UsesNgpdLibrary
+    def load_config(self, filename: str):
+        """Load the config settings from a HDF5 file."""
+        self.selected_config_file = filename
+        self.ngpd.restore_settings(path.join(self.config_file_dir, filename))

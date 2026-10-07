@@ -1,5 +1,5 @@
-import type { ScaleSequentialBase } from "d3"
-import { useMemo, useRef } from "react";
+import type { ScaleSequentialBase } from "d3";
+import { useMemo } from "react";
 
 import styles from './style.module.css';
 
@@ -12,7 +12,6 @@ interface ColourBarProps {
 
 const ColourBar = ({ colourScale, min = 0, max = 1024, step = 100 }: ColourBarProps) => {
   // TODO: WORK IN PROGRESS
-  const ref = useRef<HTMLCanvasElement>(null);
 
   const stops = useMemo(() => {
     const stops = [];
@@ -36,4 +35,4 @@ const ColourBar = ({ colourScale, min = 0, max = 1024, step = 100 }: ColourBarPr
 
 }
 
-export { ColourBar }
+export { ColourBar };
