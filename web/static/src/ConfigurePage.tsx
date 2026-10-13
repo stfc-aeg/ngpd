@@ -373,7 +373,21 @@ const ConfigPage = ({ endpoint }: ConfigPageProps) => {
                 </Tabs>
               </Col>
             </Row>
-
+          </TitleCard>
+          <TitleCard>
+            <Row>
+              <Col>
+              <InputGroup>
+              <InputGroup.Text>Config File</InputGroup.Text>
+              <FloatingLabel label="Save">
+                <EndpointInput endpoint={endpoint} fullpath={`config/settings_file/save`} placeholder="settings.hdf5"/>
+              </FloatingLabel>
+              <FloatingLabel label="Load">
+                <EndpointInput endpoint={endpoint} fullpath={`config/settings_file/load`} placeholder="settings.hdf5"/>
+              </FloatingLabel>
+              </InputGroup>
+              </Col>
+            </Row>
           </TitleCard>
     </Container >
   )

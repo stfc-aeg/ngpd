@@ -2,7 +2,7 @@
 
 import base64
 import logging
-
+import h5py
 from numpy.typing import NDArray
 from ngpd.device.pyngpd import PyNgpd, ITFGStatus, ScopeStatus
 from ngpd.util import UsesNgpdLibrary
@@ -175,3 +175,26 @@ class NgpdData:
         """Set the channel to read data from, and refresh data."""
         self.chan = chan
         self.refresh_data()
+
+    @UsesNgpdLibrary
+    def save_data(self, filename: str):
+        """Save the Histogram of each channel to a HDF5 file."""
+        with h5py.File(filename, "w") as file:
+            # file["scale"]= ["Neutron", "Gamma", "Pileup"]
+            # file["scale"].make_scale("Type_label")
+            for chan in range(8):
+                group = file.create_group(f"channel_{chan}")
+
+                data = self.ngpd.read_histogram(chan)
+                if data.shape[0] == 3:
+                    group.create_dataset("neutrons", data=data[0])
+                    group.create_dataset("gamma", data=data[1])
+                    group.create_dataset("pileup", data=data[2])
+                    group.create_dataset("all", data=data.sum(0))
+                else:
+                    group.create_dataset("all", data=data)
+                
+                
+                # dataset.dims[0].attach_scale(file["scale"])
+                
+

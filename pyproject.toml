@@ -19,7 +19,8 @@ classifiers = [
 dependencies = [
     "odin-control>=2.0",
     "cffi>=2.0",
-    "numpy"
+    "numpy",
+    "h5py"
 ]
 readme = "README.md"
 

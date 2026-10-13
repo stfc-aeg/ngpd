@@ -38,7 +38,7 @@ from ngpd.device.pyngpd import (
     PyNgpd,
     SystemMonitor,
 )
-from ngpd.util import UsesNgpdLibrary
+from ngpd.util import NgpdLibException, UsesNgpdLibrary
 
 
 HistogramSetting = Literal[
@@ -638,11 +638,26 @@ class NgpdDevice:
     @UsesNgpdLibrary
     def save_config(self, filename: str):
         """Save the Config settings to a HDF5 file."""
+        if not filename.endswith(".hdf5"):
+            filename = ".".join([filename, "hdf5"])
+        fullpath = path.join(self.config_file_dir, filename)
         self.selected_config_file = filename
-        self.ngpd.save_settings(path.join(self.config_file_dir, filename))
+        if path.isdir(self.config_file_dir):
+            if path.isfile(fullpath):
+                logging.warning(f"Overwriting Config File {filename}")
+            self.ngpd.save_settings(fullpath)
+        else:
+            raise NgpdLibException(f"Config Directory {self.config_file_dir} cannot be opened or found. Check Path.")
 
     @UsesNgpdLibrary
     def load_config(self, filename: str):
         """Load the config settings from a HDF5 file."""
-        self.selected_config_file = filename
-        self.ngpd.restore_settings(path.join(self.config_file_dir, filename))
+        if not filename.endswith(".hdf5"):
+            filename = ".".join([filename, "hdf5"])
+        fullpath = path.join(self.config_file_dir, filename)
+
+        if path.isdir(self.config_file_dir) and path.isfile(fullpath):
+            self.selected_config_file = filename
+            self.ngpd.restore_settings(path.join(self.config_file_dir, filename))
+        else:
+            raise NgpdLibException(f"{filename} cannot be opened or found. Config Not Loaded.")

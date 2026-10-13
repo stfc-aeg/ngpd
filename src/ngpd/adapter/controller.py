@@ -227,6 +227,14 @@ class NgpdController(BaseController):
                         "allowed_values": ["neutron", "gamma", "pileup", "all"],
                     },
                 ),
+                "save": (
+                    "Save File",
+                    lambda v: self.device.dataHandler.save_data(v),
+                    {
+                        "description": "Save data to the specified filename"
+                    }
+
+                )
             },
         }
 
@@ -251,9 +259,11 @@ class NgpdController(BaseController):
         # Add to param tree if needed post-initialization
 
     def cleanup(self):
+        """Clean up controller resources and state."""
         logging.info("Cleaning up NgpdController")
 
     def get(self, path, with_metadata=False):
+        """Get data from the controller at the specified path."""
         try:
             # TODO: special case if requesting histogram data, due to its size. Including it in the full param tree is causing slowdown.
             # This method is hacky and not great? but it does work.
@@ -265,19 +275,22 @@ class NgpdController(BaseController):
                 return {"value": self.device.dataHandler.get_pulse_height()}
             else:
                 return self.param_tree.get(path, with_metadata)
-        except (ParameterTreeError, NgpdLibException) as error:
+        except Exception as error:
             logging.error(error)
             raise NgpdError(error)
 
     def set(self, path, data):
+        """Set data in the controller at the specified path."""
         try:
             self.param_tree.set(path, data)
-        except (ParameterTreeError, NgpdLibException) as error:
+        except Exception as error:
             logging.error(error)
             raise NgpdError(error)
 
     def set_ip(self, ip: str):
+        """Set the IP Address of the first board."""
         self.device.ip = ip_address(ip)
 
     def set_dummy_level(self, dummy: str):
+        """Set level of dummy system, which defines how much to mock instead of accessing actual hardware."""
         self.device.dummy_level = DummyLevel[dummy.upper()]

@@ -94,6 +94,10 @@ type ConfigTree = {
     shift_height: number;
     shift_tailsum: number;
     separate_ngp: boolean;
+  };
+  settings_file: {
+    save: string;
+    load: string;
   }
 }
 
@@ -105,6 +109,7 @@ type GraphTree = {
   refresh_data: null;
   channel: ChannelIndex;
   signal: string;
+  save: string;
 }
 
 type AcquireTree = {
