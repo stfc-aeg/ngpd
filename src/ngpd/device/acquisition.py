@@ -14,6 +14,7 @@ from enum import IntEnum
 
 Acq_State = Literal["error", "paused", "counting", "running", "idle"]
 
+
 class HistDisplay(IntEnum):
     """Simple Enum for selecting hist channel."""
 
@@ -22,9 +23,10 @@ class HistDisplay(IntEnum):
     pileup = 2
     all = 3
 
+
 class NgpdAcquisition:
     """Acquisition handling class.
-    
+
     Handles the running and stopping of an acquisition, as well as scope mode enabling.
     """
 
@@ -42,9 +44,63 @@ class NgpdAcquisition:
         self._total = -1
         self.done = -1
 
-        self.monitorCallback = PeriodicCallback(
-            self.acqMonitoring, 100
-        )
+        self.monitorCallback = PeriodicCallback(self.acqMonitoring, 100)
+
+        self.tree = {
+            "num_cycles": (
+                lambda: self.num_cyles,
+                lambda v: setattr(self, "num_cycles", v),
+                {"description": "Number of Cycles for the Acquisition.", "min": 1},
+            ),
+            "frame_length": (
+                lambda: self.frame_length,
+                lambda v: setattr(self, "frame_length", v),
+                {"description": "Seconds per each Acquisition Cycle", "min": 1},
+            ),
+            "scope_setup": (
+                lambda: self.setup_scope,
+                lambda v: setattr(self, "setup_scope", v),
+                {"description": "Enable to setup Scope Mode when starting the run."},
+            ),
+            "scope_run": (
+                lambda: self.run_scope,
+                lambda v: setattr(self, "run_scope", v),
+                {"description": "Run the NGPD system in Scope Mode"},
+            ),
+            "run": (
+                None,
+                self.set_run,
+                {"description": "Start or stop the acquisition"},
+            ),
+            "state": {
+                "total": (
+                    lambda: self.total,
+                    None,
+                    {"description": "Total Frames requested for this acquisition"},
+                ),
+                "current": (
+                    lambda: self.done,
+                    None,
+                    {
+                        "description": "Number of frames currently processed by this acquisition"
+                    },
+                ),
+                "status": (
+                    lambda: self.acq_state,
+                    None,
+                    {
+                        "description": "ITFG Status",
+                        "allowed_values": [
+                            "error",
+                            "paused",
+                            "counting",
+                            "running",
+                            "idle",
+                        ],
+                    },
+                ),
+            },
+        }
 
     def configure(self, ngpd: PyNgpd):
         """Configure the Acquisiton Handler by giving it access to the ngpd object."""
@@ -69,7 +125,9 @@ class NgpdAcquisition:
         """Start the Acquisition."""
         logging.debug("Starting Acquisition")
         self.ngpd.clear_hist()
-        self.ngpd.start(self.frame_length, self.num_cyles, self.setup_scope, self.run_scope)
+        self.ngpd.start(
+            self.frame_length, self.num_cyles, self.setup_scope, self.run_scope
+        )
         self.monitorCallback.start()
 
     @UsesNgpdLibrary
@@ -78,6 +136,13 @@ class NgpdAcquisition:
         logging.debug("Stopping Acquisition")
         self.ngpd.stop()
         self.monitorCallback.stop()
+
+    def set_run(self, run: bool):
+        """Start or stop the acquisition."""
+        if run:
+            self.start()
+        else:
+            self.stop()
 
     @UsesNgpdLibrary
     def acqMonitoring(self):
@@ -97,7 +162,11 @@ class NgpdAcquisition:
             else:
                 state = "running"
 
-        done = col_time - (status.timer_us/1000000.0) + (cycles - status.cycles) * col_time
+        done = (
+            col_time
+            - (status.timer_us / 1000000.0)
+            + (cycles - status.cycles) * col_time
+        )
 
         self.acq_state = state
         self.done = done
@@ -122,6 +191,8 @@ class NgpdData:
         self.chan = 0
         self.select_display: Literal["neutron", "gamma", "pileup", "all"] = "all"
 
+        self.last_saved_data = ""
+
     def configure(self, ngpd: PyNgpd):
         """Configure the data handler to use the ngpd class object."""
         self.ngpd = ngpd
@@ -137,7 +208,9 @@ class NgpdData:
         # also adding an "exta" dataset thats the total for each (assuming its 3 datasets for separate NGP)
         pulse_data: NDArray = self.data.sum(1, dtype=np.uint32)
         if pulse_data.shape[0] == 3:
-            pulse_data: NDArray = np.append(pulse_data, [pulse_data.sum(0, dtype=np.uint32)], 0)
+            pulse_data: NDArray = np.append(
+                pulse_data, [pulse_data.sum(0, dtype=np.uint32)], 0
+            )
         logging.debug(f"Pulse Data Shape: {pulse_data.shape}")
 
         tail_data: NDArray = self.data.sum(2, np.uint32)
@@ -180,21 +253,15 @@ class NgpdData:
     def save_data(self, filename: str):
         """Save the Histogram of each channel to a HDF5 file."""
         with h5py.File(filename, "w") as file:
-            # file["scale"]= ["Neutron", "Gamma", "Pileup"]
-            # file["scale"].make_scale("Type_label")
             for chan in range(8):
-                group = file.create_group(f"channel_{chan}")
-
                 data = self.ngpd.read_histogram(chan)
                 if data.shape[0] == 3:
-                    group.create_dataset("neutrons", data=data[0])
-                    group.create_dataset("gamma", data=data[1])
-                    group.create_dataset("pileup", data=data[2])
-                    group.create_dataset("all", data=data.sum(0))
-                else:
-                    group.create_dataset("all", data=data)
-                
-                
-                # dataset.dims[0].attach_scale(file["scale"])
-                
+                    # add the All Summed histogram to the dataset, if they've been separated
+                    data = np.append(data, [data.sum(0)], 0)
+                file.create_dataset(f"channel {chan}", data=data)
+        with open(filename, "rb") as f:
+            self.last_saved_data = f.read()
 
+    def download_data(self, filename: str) -> bytes:
+        """Provide the saved HDF5 histogram as a byts object, for downloading."""
+        return self.last_saved_data

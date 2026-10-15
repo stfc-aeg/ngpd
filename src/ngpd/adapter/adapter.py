@@ -1,3 +1,4 @@
+"""Odin Control Adapter Class Module."""
 from odin_control.adapters.adapter import ApiAdapter
 from ngpd.adapter.controller import NgpdController, NgpdError
 from .._version import __version__

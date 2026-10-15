@@ -110,6 +110,7 @@ type GraphTree = {
   channel: ChannelIndex;
   signal: string;
   save: string;
+  download: null;
 }
 
 type AcquireTree = {

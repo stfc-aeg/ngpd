@@ -127,59 +127,12 @@ class NgpdController(BaseController):
         }
 
         acquisition_tree = {
-            "num_cycles": (
-                lambda: self.device.acquisition.num_cyles,
-                lambda v: setattr(self.device.acquisition, "num_cycles", v),
-                {"description": "Number of Cycles for the Acquisition."},
-            ),
-            "frame_length": (
-                lambda: self.device.acquisition.frame_length,
-                lambda v: setattr(self.device.acquisition, "frame_length", v),
-                {"description": "Length, in seconds, of each Acquisition Cycle"},
-            ),
-            "scope_setup": (
-                lambda: self.device.acquisition.setup_scope,
-                lambda v: setattr(self.device.acquisition, "setup_scope", v),
-                {"description": "Enable to setup Scope Mode when starting the run."},
-            ),
-            "scope_run": (
-                lambda: self.device.acquisition.run_scope,
-                lambda v: setattr(self.device.acquisition, "run_scope", v),
-                {"description": "Run the NGPD system in Scope Mode"},
-            ),
-            "run": (
+            **self.device.acquisition.tree,
+            "download": (
+                "Directly Access this Param to download the last saved data file.",
                 None,
-                self.device.set_run,
-                {"description": "Start or stop the acquisition"},
+                {"description": "The latest Saved HDF5 File"},
             ),
-            "state": {
-                "total": (
-                    lambda: self.device.acquisition.total,
-                    None,
-                    {"description": "Total Frames requested for this acquisition"},
-                ),
-                "current": (
-                    lambda: self.device.acquisition.done,
-                    None,
-                    {
-                        "description": "Number of frames currently processed by this acquisition"
-                    },
-                ),
-                "status": (
-                    lambda: self.device.acquisition.acq_state,
-                    None,
-                    {
-                        "description": "ITFG Status",
-                        "allowed_values": [
-                            "error",
-                            "paused",
-                            "counting",
-                            "running",
-                            "idle",
-                        ],
-                    },
-                ),
-            },
             "graph": {
                 "hist": (
                     lambda: "Directly access this Param to get the actual data",
@@ -200,7 +153,7 @@ class NgpdController(BaseController):
                     None,
                     {
                         "description": "Pulseheight Scatterplot data encoded as Base64 string"
-                    }
+                    },
                 ),
                 "refresh_data": (
                     None,
@@ -228,12 +181,16 @@ class NgpdController(BaseController):
                     },
                 ),
                 "save": (
-                    "Save File",
-                    lambda v: self.device.dataHandler.save_data(v),
+                    lambda: self.device.last_saved_filename,
+                    lambda v: self.device.save_data(v),
                     {
-                        "description": "Save data to the specified filename"
-                    }
-
+                        "description": "Save data to the specified filename. Getting this param returns the file as a bytes object, for downloading."
+                    },
+                ),
+                "download": (
+                    "Directly GET this param to download the last saved histogram file",
+                    None,
+                    {"description": "Param to download the latest saved HDF5 file."}
                 )
             },
         }
@@ -265,16 +222,20 @@ class NgpdController(BaseController):
     def get(self, path, with_metadata=False):
         """Get data from the controller at the specified path."""
         try:
-            # TODO: special case if requesting histogram data, due to its size. Including it in the full param tree is causing slowdown.
-            # This method is hacky and not great? but it does work.
-            if path == "acq/graph/hist":
-                return {"value": self.device.dataHandler.get_data()}
-            elif path == "acq/graph/tailsum":
-                return {"value": self.device.dataHandler.get_tailsum()}
-            elif path == "acq/graph/pulse_height":
-                return {"value": self.device.dataHandler.get_pulse_height()}
-            else:
-                return self.param_tree.get(path, with_metadata)
+            # using Python 3.10 match case
+            match path.strip("/"):
+                case "acq/graph/hist":
+                    return {"value": self.device.dataHandler.get_data()}
+                case "acq/graph/tailsum":
+                    return {"value": self.device.dataHandler.get_tailsum()}
+                case "acq/graph/pulse_height":
+                    return {"value": self.device.dataHandler.get_pulse_height()}
+                case "acq/graph/download":
+                    logging.warning("Returning File Data")
+                    return self.device.get_saved_data()
+                case _:
+                    # default behaviour
+                    return self.param_tree.get(path, with_metadata)
         except Exception as error:
             logging.error(error)
             raise NgpdError(error)

@@ -59,8 +59,10 @@ class NgpdDevice:
 
         self.playback_file_dir = options.get("playback_dir", "web/config/files")
         self.config_file_dir = options.get("config_dir", "web/config/files")
+        self.save_dir = options.get("save_dir", "saved_hist")
         self.selected_playback = ""
         self.selected_config_file = ""
+        self.last_saved_filename = ""
         self.enable_playback = bool(self.dummy_level & DummyLevel.ADC)
         self.allowed_playback = [""]
         if path.exists(self.playback_file_dir) and path.isdir(self.playback_file_dir):
@@ -170,8 +172,6 @@ class NgpdDevice:
                 for i in range(len(self.channels))
             },
             "filter": {
-                # TODO: Instead of using the Filter Struct iargs etc,
-                # setup the actual params for each filter?
                 f"channel_{i}": {
                     "type": (
                         lambda i=i: self.channels[i].filter.filt_type.name.lower(),
@@ -661,3 +661,22 @@ class NgpdDevice:
             self.ngpd.restore_settings(path.join(self.config_file_dir, filename))
         else:
             raise NgpdLibException(f"{filename} cannot be opened or found. Config Not Loaded.")
+
+    def save_data(self, filename: str):
+        """Save the Histogram data to a HDF5 file."""
+        if not filename.endswith((".hdf5", ".h5")):
+            filename = ".".join([filename, "hdf5"])
+        fullpath = path.join(self.save_dir, filename)
+        
+        self.dataHandler.save_data(fullpath)
+        self.last_saved_filename = filename # done after the save_data call so if that fails for any reason, we dont change the variable
+
+    def get_saved_data(self, filename: str = None):
+        """Return the saved HDF5 file as a bytes object."""
+        filename = filename or self.last_saved_filename
+        if not filename.endswith((".hdf5", ".h5")):
+            filename = ".".join([filename, "hdf5"])
+        #TODO: Could be a problem since this might allow for absolute paths, meaning any file on the system could be copied?
+        fullpath = path.join(self.save_dir, filename)
+        return self.dataHandler.download_data(fullpath)
+

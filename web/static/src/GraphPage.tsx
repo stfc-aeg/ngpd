@@ -1,6 +1,6 @@
 import { EndpointButton, EndpointCheckbox, EndpointDropdown, EndpointInput, EndpointSelect, OdinGraph, TitleCard, type AdapterEndpoint } from "@dssg/odin-react";
-import { useEffect, useState } from "react";
-import { ButtonGroup, Col, Container, DropdownItem, FloatingLabel, Form, InputGroup, ProgressBar, Row } from "react-bootstrap";
+import React, { useEffect, useState, useTransition } from "react";
+import { Button, ButtonGroup, Col, Container, DropdownItem, FloatingLabel, Form, InputGroup, ProgressBar, Row } from "react-bootstrap";
 import { Histogram } from "./Histogram";
 import { channels, type EndpointParams } from "./types";
 
@@ -14,6 +14,7 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
 
   const [tailsum_data, setTailsum_data] = useState<number[][]>([]);
   const [pulseheight_data, setPulseheight_data] = useState<number[][]>([]);
+  const [downloadPending, startTransition] = useTransition();
 
   const shape = endpoint.data?.acq.graph.data_shape ?? [1, 1024, 1024];
   const { height_bins, tailsum_bins } = {
@@ -75,6 +76,29 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [height_bins, tailsum_bins, data_endpoint.data?.value])
 
+  const create_file_name = () => {
+    const now = new Date();
+    const timestamp = now.toISOString();
+
+    return ["ngpd_hist", timestamp, "h5"].join(".");
+
+  }
+
+  const download_file = async (filename: string) => {
+    const file = await endpoint.get<Blob>("acq/graph/download", { responseType: "blob" });
+    const url = URL.createObjectURL(file);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+
+    link.click();
+
+    // cleanup
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   const Controls = (
     <Row>
       <Col>
@@ -114,6 +138,15 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
               </Col>
               <Col xs="12" md="12" lg="6">
                 <OdinGraph data={tailsum_data} series_names={["Neutrons", "Gamma", "Pileup", "All"]} title="Tail Sum" />
+              </Col>
+            </Row>
+            <Row>
+              <Col>
+                <EndpointButton endpoint={endpoint} fullpath="acq/graph/save" disabled={downloadPending}
+                  pre_method={create_file_name} post_method={({ value }: { value?: string }) => startTransition(async () => download_file(value!))}
+                  post_args={{ value: undefined }} >
+                  {downloadPending ? "Downloading..." : "Download Data"}
+                </EndpointButton>
               </Col>
             </Row>
           </TitleCard>
