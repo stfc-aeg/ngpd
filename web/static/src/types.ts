@@ -98,6 +98,7 @@ type ConfigTree = {
   settings_file: {
     save: string;
     load: string;
+    available: string[];
   }
 }
 

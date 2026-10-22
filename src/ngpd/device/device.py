@@ -5,6 +5,8 @@ from ipaddress import ip_address
 from math import log2
 from os import listdir, path
 from typing import Literal
+
+from ngpd.adapter.exception import NgpdError
 from ngpd.device.acquisition import NgpdAcquisition, NgpdData
 from ngpd.device.channel import NgpdChannel
 from ngpd.device.pyngpd import (
@@ -38,8 +40,7 @@ from ngpd.device.pyngpd import (
     PyNgpd,
     SystemMonitor,
 )
-from ngpd.util import NgpdLibException, UsesNgpdLibrary
-
+from ngpd.util import UsesNgpdLibrary
 
 HistogramSetting = Literal[
     "separate_ngp", "nbits_height", "shift_height", "nbits_tail_sum", "shift_tail_sum"
@@ -514,18 +515,26 @@ class NgpdDevice:
                 "save": (
                     lambda: self.selected_config_file,
                     lambda file: self.save_config(file),
-                    {
-                        "description": "Save the current system config to a HDF5 file"
-                    }
+                    {"description": "Save the current system config to a HDF5 file"},
                 ),
                 "load": (
                     lambda: self.selected_config_file,
                     lambda file: self.load_config(file),
+                    {"description": "Load the config from the selected HDF5 file"},
+                ),
+                "available": (
+                    lambda: [
+                        filename
+                        for filename in listdir(self.config_file_dir)
+                        if path.isfile(path.join(self.config_file_dir, filename))
+                        and (filename.endswith(".h5") or filename.endswith(".hdf5"))
+                    ],
+                    None,
                     {
-                        "description": "Load the config from the selected HDF5 file"
-                    }
-                )
-            }
+                        "description": "List of currently available config files saved locally"
+                    },
+                ),
+            },
         }
 
     def configure(self):
@@ -638,45 +647,95 @@ class NgpdDevice:
     @UsesNgpdLibrary
     def save_config(self, filename: str):
         """Save the Config settings to a HDF5 file."""
-        if not filename.endswith(".hdf5"):
-            filename = ".".join([filename, "hdf5"])
-        fullpath = path.join(self.config_file_dir, filename)
-        self.selected_config_file = filename
-        if path.isdir(self.config_file_dir):
-            if path.isfile(fullpath):
-                logging.warning(f"Overwriting Config File {filename}")
-            self.ngpd.save_settings(fullpath)
-        else:
-            raise NgpdLibException(f"Config Directory {self.config_file_dir} cannot be opened or found. Check Path.")
+        try:
+            base, ext = path.splitext(path.basename(filename))
+            if ext not in [".h5", ".hdf5"]:
+                ext = ".hdf5"
+            filename = f"{base}{ext}"
+
+            fullpath = path.join(self.config_file_dir, filename)
+            self.selected_config_file = filename
+            if path.isdir(self.config_file_dir):
+                if path.isfile(fullpath):
+                    logging.warning(f"Overwriting Config File {filename}")
+                self.ngpd.save_settings(fullpath)
+            else:
+                raise NgpdError(
+                    f"Config Directory {self.config_file_dir} cannot be opened or found. Check Path."
+                )
+        except OSError as err:
+            raise NgpdError(err)
 
     @UsesNgpdLibrary
     def load_config(self, filename: str):
         """Load the config settings from a HDF5 file."""
-        if not filename.endswith(".hdf5"):
-            filename = ".".join([filename, "hdf5"])
-        fullpath = path.join(self.config_file_dir, filename)
+        try:
+            base, ext = path.splitext(path.basename(filename))
+            if ext not in [".h5", ".hdf5"]:
+                ext = ".hdf5"
+            filename = f"{base}{ext}"
+            logging.debug(f"Loading config from file {filename}")
 
-        if path.isdir(self.config_file_dir) and path.isfile(fullpath):
-            self.selected_config_file = filename
-            self.ngpd.restore_settings(path.join(self.config_file_dir, filename))
-        else:
-            raise NgpdLibException(f"{filename} cannot be opened or found. Config Not Loaded.")
+            if path.isdir(self.config_file_dir) and path.isfile(
+                path.join(self.config_file_dir, filename)
+            ):
+                self.selected_config_file = filename
+                self.ngpd.restore_settings(path.join(self.config_file_dir, filename))
+            else:
+                raise NgpdError(
+                    f"{filename} cannot be opened or found. Config Not Loaded."
+                )
+        except OSError as err:
+            raise NgpdError(err)
+
+    def upload_config(self, filename: str, data: bytes):
+        """Create a new config file from one uploaded via a POST request."""
+        try:
+            base, ext = path.splitext(path.basename(filename))
+            if ext not in [".h5", ".hdf5"]:
+                ext = ".hdf5"
+            filename = f"{base}{ext}"
+            logging.debug(f"Uploaded File Name: {filename}")
+
+            increment = 0
+            while path.isfile(path.join(self.config_file_dir, filename)):
+                logging.debug(f"{filename} already exists")
+                # if file of that name already exists in the directory, add an incrememnting number to avoid overwriting the existing config
+                increment += 1
+                filename = f"{base} ({increment}){ext}"
+
+            with open(path.join(self.config_file_dir, filename), "xb") as file:
+                file.write(data)
+
+            return filename
+        except FileExistsError as err:
+            logging.error(f"File Exists! {err}")
+            raise NgpdError(f"Config File already exists, can't save new one: {err}")
+        except OSError as err:
+            logging.error(f"OS error uploading file: {err}")
+            raise NgpdError(f"OS Error when trying to upload new config: {err}")
+
+        
 
     def save_data(self, filename: str):
         """Save the Histogram data to a HDF5 file."""
-        if not filename.endswith((".hdf5", ".h5")):
-            filename = ".".join([filename, "hdf5"])
-        fullpath = path.join(self.save_dir, filename)
-        
-        self.dataHandler.save_data(fullpath)
-        self.last_saved_filename = filename # done after the save_data call so if that fails for any reason, we dont change the variable
+        filename = self.validate_filename(filename)
+
+        self.dataHandler.save_data(path.join(self.save_dir, filename))
+        self.last_saved_filename = filename  # done after the save_data call so if that fails for any reason, we dont change the variable
 
     def get_saved_data(self, filename: str = None):
         """Return the saved HDF5 file as a bytes object."""
         filename = filename or self.last_saved_filename
         if not filename.endswith((".hdf5", ".h5")):
             filename = ".".join([filename, "hdf5"])
-        #TODO: Could be a problem since this might allow for absolute paths, meaning any file on the system could be copied?
+        # TODO: Could be a problem since this might allow for absolute paths, meaning any file on the system could be copied?
         fullpath = path.join(self.save_dir, filename)
         return self.dataHandler.download_data(fullpath)
 
+    def validate_filename(self, filename: str):
+        """Ensure a provided filename has a HDF5 extension and strip any additional path parts to ensure it's not accesing invalid file locations."""
+        base, ext = path.splitext(path.basename(filename))
+        if ext not in [".h5", ".hdf5"]:
+            ext = ".hdf5"
+        return f"{base}{ext}"

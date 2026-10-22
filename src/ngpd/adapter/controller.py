@@ -1,18 +1,16 @@
 """Odin Control Controller Class Module."""
 
 import logging
-from ipaddress import ip_address
-from functools import partial
 from dataclasses import asdict
-from odin_control.adapters.parameter_tree import ParameterTree, ParameterTreeError
-from odin_control.adapters.base_controller import BaseController, BaseError
-from ngpd.device.pyngpd import DummyLevel
-from ngpd.util import NgpdLibException
+from functools import partial
+from ipaddress import ip_address
+
+from odin_control.adapters.base_controller import BaseController
+from odin_control.adapters.parameter_tree import ParameterTree
+
+from ngpd.adapter.exception import NgpdError
 from ngpd.device import NgpdDevice
-
-
-class NgpdError(BaseError):
-    """Simple exception class to wrap lower-level exceptions."""
+from ngpd.device.pyngpd import DummyLevel
 
 
 class NgpdController(BaseController):
@@ -190,8 +188,8 @@ class NgpdController(BaseController):
                 "download": (
                     "Directly GET this param to download the last saved histogram file",
                     None,
-                    {"description": "Param to download the latest saved HDF5 file."}
-                )
+                    {"description": "Param to download the latest saved HDF5 file."},
+                ),
             },
         }
 
