@@ -92,7 +92,6 @@
     --heatmap-padding: 50px;
     position: relative;
     padding-left: var(--heatmap-padding);
-    padding-bottom: var(--heatmap-padding);
     padding-right: var(--heatmap-padding);
 }
 

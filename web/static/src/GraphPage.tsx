@@ -1,6 +1,6 @@
 import { EndpointButton, EndpointCheckbox, EndpointDropdown, EndpointInput, EndpointSelect, OdinGraph, TitleCard, type AdapterEndpoint } from "@dssg/odin-react";
-import React, { useEffect, useState, useTransition } from "react";
-import { Button, ButtonGroup, Col, Container, DropdownItem, FloatingLabel, Form, InputGroup, ProgressBar, Row } from "react-bootstrap";
+import { useEffect, useState, useTransition } from "react";
+import { ButtonGroup, Col, Container, DropdownItem, FloatingLabel, Form, InputGroup, OverlayTrigger, ProgressBar, Row, Tooltip } from "react-bootstrap";
 import { Histogram } from "./Histogram";
 import { channels, type EndpointParams } from "./types";
 
@@ -102,7 +102,7 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
   const Controls = (
     <Row>
       <Col>
-        <InputGroup>
+        <InputGroup size="sm">
           <EndpointDropdown endpoint={endpoint} fullpath="acq/graph/channel" title={`Channel ${endpoint.data?.acq.graph.channel}`} variant="secondary">
             {channels.map((chan) => (
               <DropdownItem eventKey={chan} key={chan} active={endpoint.data?.acq.graph.channel == chan}>{chan}</DropdownItem>
@@ -115,9 +115,25 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
         <h3>Histogram</h3>
       </Col>
       <Col xs="auto">
-        <EndpointButton endpoint={endpoint} fullpath="acq/graph/refresh_data" value={true}>
-          Refresh Graph
-        </EndpointButton>
+        <ButtonGroup size="sm">
+          <OverlayTrigger placement="auto" overlay={<Tooltip>Ensure the displayed data is the lastest from the device.</Tooltip>}>
+            <EndpointButton endpoint={endpoint} fullpath="acq/graph/refresh_data" value={true} >
+              Refresh Graph
+            </EndpointButton>
+          </OverlayTrigger>
+          <OverlayTrigger placement="auto" overlay={<Tooltip>Save the data to a HDF5 file.</Tooltip>}>
+            <EndpointButton endpoint={endpoint} fullpath="acq/graph/save" disabled={downloadPending} pre_method={create_file_name} variant="secondary">
+              Save Data
+            </EndpointButton>
+          </OverlayTrigger>
+          <OverlayTrigger placement="auto" overlay={<Tooltip>Save the data to a HDF5 file, and download it.</Tooltip>}>
+            <EndpointButton endpoint={endpoint} fullpath="acq/graph/save" disabled={downloadPending} variant="secondary"
+              pre_method={create_file_name} post_method={({ value }: { value?: string }) => startTransition(async () => download_file(value!))}
+              post_args={{ value: undefined }} >
+              {downloadPending ? "Downloading..." : "Save and Download Data"}
+            </EndpointButton>
+          </OverlayTrigger>
+        </ButtonGroup>
       </Col>
     </Row>
   )
@@ -138,15 +154,6 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
               </Col>
               <Col xs="12" md="12" lg="6">
                 <OdinGraph data={tailsum_data} series_names={["Neutrons", "Gamma", "Pileup", "All"]} title="Tail Sum" />
-              </Col>
-            </Row>
-            <Row>
-              <Col>
-                <EndpointButton endpoint={endpoint} fullpath="acq/graph/save" disabled={downloadPending}
-                  pre_method={create_file_name} post_method={({ value }: { value?: string }) => startTransition(async () => download_file(value!))}
-                  post_args={{ value: undefined }} >
-                  {downloadPending ? "Downloading..." : "Download Data"}
-                </EndpointButton>
               </Col>
             </Row>
           </TitleCard>
