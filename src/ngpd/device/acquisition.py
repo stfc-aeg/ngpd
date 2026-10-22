@@ -185,8 +185,14 @@ class NgpdData:
         self.data_shape = (3, 1024, 1024)
         self.data = np.zeros(self.data_shape, np.uint32)
 
-        self.tail_sum_data = np.zeros(self.data_shape)
-        self.pulse_height_data = np.zeros(self.data_shape)
+        tail_data: NDArray = self.data.sum(2, dtype=np.uint32)
+        self.tail_sum_data = np.append(
+            tail_data, [tail_data.sum(0, dtype=np.uint32)], 0
+        )
+        pulse_data: NDArray = self.data.sum(1, dtype=np.uint32)
+        self.pulse_height_data = np.append(
+            pulse_data, [pulse_data.sum(0, dtype=np.uint32)], 0
+        )
 
         self.chan = 0
         self.select_display: Literal["neutron", "gamma", "pileup", "all"] = "all"
@@ -213,7 +219,7 @@ class NgpdData:
             )
         logging.debug(f"Pulse Data Shape: {pulse_data.shape}")
 
-        tail_data: NDArray = self.data.sum(2, np.uint32)
+        tail_data: NDArray = self.data.sum(2, dtype=np.uint32)
         if tail_data.shape[0] == 3:
             tail_data = np.append(tail_data, [tail_data.sum(0, dtype=np.uint32)], 0)
         logging.debug(f"Tail Data Shape: {tail_data.shape}")
