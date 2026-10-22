@@ -1,4 +1,4 @@
-import { EndpointButton, EndpointCheckbox, EndpointDropdown, EndpointInput, EndpointSelect, OdinGraph, TitleCard, type AdapterEndpoint } from "@dssg/odin-react";
+import { EndpointButton, EndpointCheckbox, EndpointDropdown, EndpointInput, EndpointSelect, OdinGraph, TitleCard, useError, type AdapterEndpoint } from "@dssg/odin-react";
 import { useEffect, useState, useTransition } from "react";
 import { ButtonGroup, Col, Container, DropdownItem, FloatingLabel, Form, InputGroup, OverlayTrigger, ProgressBar, Row, Tooltip } from "react-bootstrap";
 import { Histogram } from "./Histogram";
@@ -6,12 +6,12 @@ import { channels, type EndpointParams } from "./types";
 
 interface GraphPageProps {
   endpoint: AdapterEndpoint<EndpointParams>;
-  data_endpoint: AdapterEndpoint<{ value: EndpointParams["acq"]["graph"]["hist"] }>;
+  data_endpoint: AdapterEndpoint<{value: EndpointParams["data"]["hist"]}>;
 }
 
 const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
 
-
+  const { setError } = useError();
   const [tailsum_data, setTailsum_data] = useState<number[][]>([]);
   const [pulseheight_data, setPulseheight_data] = useState<number[][]>([]);
   const [downloadPending, startTransition] = useTransition();
@@ -24,7 +24,7 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
 
   useEffect(() => {
     const fetch_data = async () => {
-      const tailsum = (await endpoint.get<{ "value": string }>("acq/graph/tailsum")).value;
+      const tailsum = (await endpoint.get<{ "value": string }>("data/tailsum")).value;
       const reshaped_data: number[][] = [];
       if (tailsum) {
         try {
@@ -47,11 +47,11 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
 
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [height_bins, tailsum_bins, data_endpoint.data?.value])
+  }, [height_bins, tailsum_bins, endpoint.data?.acq.graph.channel, data_endpoint?.data?.value])
 
   useEffect(() => {
     const fetch_data = async () => {
-      const pulseheight = (await endpoint.get<{ "value": string }>("acq/graph/pulse_height")).value;
+      const pulseheight = (await endpoint.get<{ "value": string }>("data/pulse_height")).value;
       const reshaped_data: number[][] = [];
       if (pulseheight) {
         try {
@@ -74,7 +74,7 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
 
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [height_bins, tailsum_bins, data_endpoint.data?.value])
+  }, [height_bins, tailsum_bins, endpoint.data?.acq.graph.channel, data_endpoint?.data?.value])
 
   const create_file_name = () => {
     const now = new Date();
@@ -85,18 +85,22 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
   }
 
   const download_file = async (filename: string) => {
-    const file = await endpoint.get<Blob>("acq/graph/download", { responseType: "blob" });
-    const url = URL.createObjectURL(file);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", filename);
-    document.body.appendChild(link);
+    try {
+      const file = await endpoint.get<Blob>("data/download", { responseType: "blob" });
+      const url = URL.createObjectURL(file);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
 
-    link.click();
+      link.click();
 
-    // cleanup
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+      // cleanup
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err : Error("Unknown Error Occurred"));
+    }
   }
 
   const Controls = (
@@ -117,7 +121,7 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
       <Col xs="auto">
         <ButtonGroup size="sm">
           <OverlayTrigger placement="auto" overlay={<Tooltip>Ensure the displayed data is the lastest from the device.</Tooltip>}>
-            <EndpointButton endpoint={endpoint} fullpath="acq/graph/refresh_data" value={true} >
+            <EndpointButton endpoint={endpoint} fullpath="acq/graph/refresh_data" value={true} post_method={() => data_endpoint.get()}>
               Refresh Graph
             </EndpointButton>
           </OverlayTrigger>
@@ -145,7 +149,7 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
           <TitleCard title={Controls}>
             <Row>
               <Col>
-                <Histogram endpoint={endpoint} data_endpoint={data_endpoint} />
+                <Histogram endpoint={endpoint} data_endpoint={data_endpoint}/>
               </Col>
             </Row>
             <Row>

@@ -132,27 +132,6 @@ class NgpdController(BaseController):
                 {"description": "The latest Saved HDF5 File"},
             ),
             "graph": {
-                "hist": (
-                    lambda: "Directly access this Param to get the actual data",
-                    None,
-                    {
-                        "description": "Histogram Data from selected channel, encoded as a Base64 string"
-                    },
-                ),
-                "tailsum": (
-                    lambda: "Directly access this Param to get the actual data",
-                    None,
-                    {
-                        "description": "Tailsum Scatterplot data encoded as Base64 string"
-                    },
-                ),
-                "pulse_height": (
-                    lambda: "Directly access this Param to get the actual data",
-                    None,
-                    {
-                        "description": "Pulseheight Scatterplot data encoded as Base64 string"
-                    },
-                ),
                 "refresh_data": (
                     None,
                     lambda _: self.device.dataHandler.refresh_data(),
@@ -184,12 +163,7 @@ class NgpdController(BaseController):
                     {
                         "description": "Save data to the specified filename. Getting this param returns the file as a bytes object, for downloading."
                     },
-                ),
-                "download": (
-                    "Directly GET this param to download the last saved histogram file",
-                    None,
-                    {"description": "Param to download the latest saved HDF5 file."},
-                ),
+                )
             },
         }
 
@@ -220,23 +194,37 @@ class NgpdController(BaseController):
     def get(self, path, with_metadata=False):
         """Get data from the controller at the specified path."""
         try:
-            # using Python 3.10 match case
-            match path.strip("/"):
-                case "acq/graph/hist":
-                    return {"value": self.device.dataHandler.get_data()}
-                case "acq/graph/tailsum":
-                    return {"value": self.device.dataHandler.get_tailsum()}
-                case "acq/graph/pulse_height":
-                    return {"value": self.device.dataHandler.get_pulse_height()}
-                case "acq/graph/download":
-                    logging.warning("Returning File Data")
-                    return self.device.get_saved_data()
-                case _:
-                    # default behaviour
-                    return self.param_tree.get(path, with_metadata)
+            return self.param_tree.get(path, with_metadata)
         except Exception as error:
             logging.error(error)
             raise NgpdError(error)
+
+    def get_data(self, path: str):
+        """Get non-json style data, such as returning a HDF5 file."""
+        try:
+            splitpath = path.split("/", 1)
+            match splitpath[0]:
+                case "config":
+                    # Get the saved Config file for downloading
+                    filename = splitpath[1] if len(splitpath) > 1 else None
+                    return self.device.download_config(filename), "hdf5"
+                case "download":
+                    # Get the saved HDF5 file of Histogram data
+                    filename = splitpath[1] if len(splitpath) > 1 else None
+                    return self.device.get_saved_data(filename), "hdf5"
+                case "hist":
+                    # get the Histogram data
+                    return {"value": self.device.dataHandler.get_data()}, "json"
+                case "tailsum":
+                    # get the Tailsum Data
+                    return {"value": self.device.dataHandler.get_tailsum()}, "json"
+                case "pulse_height":
+                    return {"value": self.device.dataHandler.get_pulse_height()}, "json"
+                case _:
+                    raise NgpdError(f"Unknown Data Path: {path}")
+        except Exception as err:
+            # TODO: more explicit error handling
+            raise NgpdError(err)
 
     def set(self, path, data):
         """Set data in the controller at the specified path."""

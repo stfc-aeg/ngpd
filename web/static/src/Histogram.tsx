@@ -1,13 +1,13 @@
 import type { AdapterEndpoint } from "@dssg/odin-react";
-import type { EndpointParams } from "./types";
-import { useEffect, useMemo, useState, type ComponentProps, type MouseEventHandler } from "react";
-import { getDimensions } from "./histogram/util";
-import styles from "./histogram/style.module.css";
+import { useEffect, useState, type ComponentProps, type MouseEventHandler } from "react";
 import { Axes, Heatmap, Scatter } from "./histogram";
+import styles from "./histogram/style.module.css";
+import { getDimensions } from "./histogram/util";
+import type { EndpointParams } from "./types";
 
 interface HistogramProps {
   endpoint: AdapterEndpoint<EndpointParams>;
-  data_endpoint?: AdapterEndpoint<{ value: EndpointParams["acq"]["graph"]["hist"] }>;
+  data_endpoint: AdapterEndpoint<{ value: EndpointParams["data"]["hist"] }>;
 }
 
 const Histogram = ({ endpoint, data_endpoint }: HistogramProps) => {
@@ -16,6 +16,7 @@ const Histogram = ({ endpoint, data_endpoint }: HistogramProps) => {
   const [max_height, setMaxHeight] = useState(0);
   const [tailsum_left, setTailsumLeft] = useState(0);
   const [tailsum_right, setTailsumRight] = useState(0);
+  const [hist_data, setHist_data] = useState<number[][]>([]);
 
   const shape = endpoint.data?.acq.graph.data_shape ?? [1, 1024, 1024];
   const chan = endpoint.data?.acq.graph.channel ?? 0;
@@ -33,28 +34,30 @@ const Histogram = ({ endpoint, data_endpoint }: HistogramProps) => {
     "Tail Sum": [[0, tailsum_left], [numCols, tailsum_right]]
   }
 
-  const data = useMemo(() => {
-    const hist = data_endpoint?.data?.value ?? endpoint.data?.acq.graph.hist;
+  useEffect(() => {
+    const fetch_data = async () => {
+      const hist = (await endpoint.get<{ "value": string }>("data/hist")).value;
+      const reshaped_data: number[][] = [];
+      if (hist) {
+        try {
+          const tmp = Uint8Array.fromBase64(hist);
+          const buf = new Uint32Array(tmp.buffer);
 
-    const reshaped_data: number[][] = [];
+          const dataset_length = numCols * numRows;
 
-    if (hist) {
-      try {
-        const tmp = Uint8Array.fromBase64(hist);
-        const buf = new Uint32Array(tmp.buffer);
-
-        const dataset_length = numCols * numRows;
-
-        for (let i = 0; i < dataset_length; i += numRows) {
-          reshaped_data.push(Array.from(buf.slice(i, i + numCols)))
+          for (let i = 0; i < dataset_length; i += numRows) {
+            reshaped_data.push(Array.from(buf.slice(i, i + numCols)))
+          }
+        } catch (err) {
+          console.log(err);
         }
-      } catch (err) {
-        console.log(err);
       }
+      setHist_data(reshaped_data);
     }
 
-    return reshaped_data;
-  }, [data_endpoint?.data?.value, endpoint.data?.acq.graph.hist, numCols, numRows]);
+    fetch_data();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chan, numCols, numRows, endpoint.data?.acq.graph.signal, data_endpoint?.data?.value]);
 
   const onScatterDrag: MouseEventHandler<SVGCircleElement> = (e) => {
     if (e.buttons & 1) { // test that left click is held
@@ -140,9 +143,9 @@ const Histogram = ({ endpoint, data_endpoint }: HistogramProps) => {
     <div className={styles.heatmap}>
       <Axes xRange={[0, numCols]} yRange={[0, numRows]} step={128} xLabel="Pulse Height" yLabel="Tail Sum" />
       <Scatter data={scatterData} xRange={[0, numCols]} yRange={[0, numRows]} onMouseDrag={onScatterDrag} onMouseUp={onScatterRelease} />
-      <Heatmap data={data} />
+      <Heatmap data={hist_data} />
     </div>
   )
 }
 
-export { Histogram }
+export { Histogram };

@@ -14,7 +14,7 @@ const App = () => {
   const endpoint = useAdapterEndpoint<EndpointParams>("ngpd", import.meta.env.VITE_ENDPOINT_URL, 500);
 
   // endpoint for the Hist data, as that wont send the full data unless directly requested. this avoids lag in the main endpoint
-  const data_endpoint = useAdapterEndpoint<{value: EndpointParams["acq"]["graph"]["hist"]}>("ngpd/acq/graph/hist", import.meta.env.VITE_ENDPOINT_URL);
+  const data_endpoint = useAdapterEndpoint<{value: EndpointParams["data"]["hist"]}>("ngpd/data/hist", import.meta.env.VITE_ENDPOINT_URL);
 
   return (
     <OdinApp title="Neutron Gamma Pulse Discriminator"

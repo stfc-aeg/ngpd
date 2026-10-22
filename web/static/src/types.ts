@@ -104,14 +104,10 @@ type ConfigTree = {
 
 type GraphTree = {
   data_shape: number[];
-  hist: string;
-  tailsum: string;
-  pulse_height: string;
   refresh_data: null;
   channel: ChannelIndex;
   signal: string;
   save: string;
-  download: null;
 }
 
 type AcquireTree = {
@@ -134,6 +130,13 @@ export interface EndpointParams {
   monitor: MonitorTree;
   config: ConfigTree;
   acq: AcquireTree;
+  data: {
+    config: Record<string, null>;
+    download: null;
+    hist: string;
+    tailsum: string;
+    pulse_height: string;
+  }
 }
 
 export const channels: readonly ChannelIndex[] = [0, 1, 2, 3, 4, 5, 6, 7];

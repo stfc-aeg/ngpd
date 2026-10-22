@@ -1,10 +1,9 @@
-import { EndpointButton, EndpointCheckbox, EndpointDoubleSlider, EndpointInput, EndpointSelect, TitleCard, type AdapterEndpoint, FileUpload } from "@dssg/odin-react";
+import { EndpointButton, EndpointCheckbox, EndpointDoubleSlider, EndpointInput, EndpointSelect, FileUpload, TitleCard, useError, type AdapterEndpoint } from "@dssg/odin-react";
 import type { SubmitEventHandler } from "react";
-import { useRef } from "react";
+import { useRef, useTransition } from "react";
 import { Button, Col, Container, FloatingLabel, Form, InputGroup, OverlayTrigger, Row, Stack, Tab, Tabs, Tooltip } from "react-bootstrap";
 import type { EndpointParams } from "./types";
 import { channels } from "./types";
-
 interface ConfigPageProps {
   endpoint: AdapterEndpoint<EndpointParams>;
 }
@@ -24,7 +23,6 @@ interface GenericControlCardProps extends ControlCardProps {
 const isSelectElement = (element: HTMLInputElement | HTMLSelectElement): element is HTMLSelectElement => {
   return element.tagName === "SELECT"
 }
-
 
 const ConfigControls = ({ endpoint, chan, title, configPath, children }: GenericControlCardProps) => {
 
@@ -50,11 +48,6 @@ const ConfigControls = ({ endpoint, chan, title, configPath, children }: Generic
               break;
             case "checkbox":
               data[element.name] = element.checked;
-              break;
-            case "range":
-              //Im using Double slider stuff Im not 100% how to handle this
-              console.log("Dunno how to handle SLider yet");
-              console.log(element);
               break;
             default:
               data[element.name] = element.value;
@@ -94,6 +87,28 @@ const ConfigControls = ({ endpoint, chan, title, configPath, children }: Generic
 
 
 const ConfigPage = ({ endpoint }: ConfigPageProps) => {
+
+  const { setError } = useError();
+  const [transferPending, startTransition] = useTransition();
+
+  const download_file = async (filename: string) => {
+    try {
+      const file = await endpoint.get<Blob>(`data/config/${filename}`, { responseType: "blob" });
+      const url = URL.createObjectURL(file);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+
+      link.click();
+
+      // cleanup
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err : Error("Unknown Error Occurred"));
+    }
+  }
 
   return (
     <Container fluid="xxl">
@@ -373,20 +388,22 @@ const ConfigPage = ({ endpoint }: ConfigPageProps) => {
             <Col lg="6" md="12">
               <Form.Group as={Row}>
                 <Form.Label>Save New</Form.Label>
-                <Stack direction="horizontal">
+                <InputGroup>
                   <EndpointInput endpoint={endpoint} fullpath={`config/settings_file/save`} />
-                  <Button>Download</Button>
-                </Stack>
+                  <Button disabled={transferPending} onClick={() => startTransition(async () => download_file(endpoint.data?.config.settings_file.save ?? ""))}>
+                    Download
+                  </Button>
+                </InputGroup>
               </Form.Group>
             </Col>
             <Col>
               <Form.Group as={Row}>
                 <Form.Label>Load</Form.Label>
-                <Stack direction="horizontal">
+                <InputGroup>
                   <OverlayTrigger overlay={<Tooltip>Select a saved Config File.</Tooltip>}>
                     <EndpointSelect endpoint={endpoint} fullpath={"config/settings_file/load"}>
                       {endpoint.data?.config.settings_file.available.map((filename) => (
-                        <option value={filename}>{filename}</option>
+                        <option key={filename} value={filename}>{filename}</option>
                       )
                       )}
                     </EndpointSelect>
@@ -394,7 +411,7 @@ const ConfigPage = ({ endpoint }: ConfigPageProps) => {
                   <OverlayTrigger overlay={<Tooltip>Upload a Config file to the server.</Tooltip>}>
                     <FileUpload endpoint={endpoint} fullpath={"config/settings_file/load"} accept=".h5, .hdf5" />
                   </OverlayTrigger>
-                </Stack>
+                </InputGroup>
               </Form.Group>
             </Col>
           </Row>

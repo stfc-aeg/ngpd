@@ -347,6 +347,12 @@ class NgpdDevice:
             ):
                 self.selected_config_file = filename
                 self.ngpd.restore_settings(path.join(self.config_file_dir, filename))
+                for channel in self.channels:
+                    # reset channel reads to make sure displayed vals on GUI match changes made by config file
+                    channel._filter = None
+                    channel._trigger = None
+                    channel._base_sub = None
+                    channel._tail_measure = None
             else:
                 raise NgpdError(
                     f"{filename} cannot be opened or found. Config Not Loaded."
@@ -372,7 +378,7 @@ class NgpdDevice:
 
             with open(path.join(self.config_file_dir, filename), "xb") as file:
                 file.write(data)
-
+            self.selected_config_file = filename
             return filename
         except FileExistsError as err:
             logging.error(f"File Exists! {err}")
@@ -380,6 +386,13 @@ class NgpdDevice:
         except OSError as err:
             logging.error(f"OS error uploading file: {err}")
             raise NgpdError(f"OS Error when trying to upload new config: {err}")
+
+    def download_config(self, filename: str = None):
+        """Provide the requested Config File as a Bytes object."""
+        filename = filename or self.selected_config_file
+        filename = self.validate_filename(filename)
+        return self.dataHandler.download_data(path.join(self.config_file_dir, filename))
+
 
     def save_data(self, filename: str):
         """Save the Histogram data to a HDF5 file."""
@@ -391,9 +404,8 @@ class NgpdDevice:
     def get_saved_data(self, filename: str = None):
         """Return the saved HDF5 file as a bytes object."""
         filename = filename or self.last_saved_filename
-        if not filename.endswith((".hdf5", ".h5")):
-            filename = ".".join([filename, "hdf5"])
-        # TODO: Could be a problem since this might allow for absolute paths, meaning any file on the system could be copied?
+        filename = self.validate_filename(filename)
+
         fullpath = path.join(self.save_dir, filename)
         return self.dataHandler.download_data(fullpath)
 

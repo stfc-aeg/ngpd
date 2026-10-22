@@ -197,8 +197,6 @@ class NgpdData:
         self.chan = 0
         self.select_display: Literal["neutron", "gamma", "pileup", "all"] = "all"
 
-        self.last_saved_data = ""
-
     def configure(self, ngpd: PyNgpd):
         """Configure the data handler to use the ngpd class object."""
         self.ngpd = ngpd
@@ -265,9 +263,10 @@ class NgpdData:
                     # add the All Summed histogram to the dataset, if they've been separated
                     data = np.append(data, [data.sum(0)], 0)
                 file.create_dataset(f"channel {chan}", data=data)
-        with open(filename, "rb") as f:
-            self.last_saved_data = f.read()
 
     def download_data(self, filename: str) -> bytes:
-        """Provide the saved HDF5 histogram as a byts object, for downloading."""
-        return self.last_saved_data
+        """Provide the saved HDF5 histogram as a bytes object, for downloading."""
+        filedata: bytes = None
+        with open(filename, "rb") as f:
+            filedata = f.read()
+        return filedata
