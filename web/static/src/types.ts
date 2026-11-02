@@ -104,7 +104,7 @@ type ConfigTree = {
 
 type GraphTree = {
   data_shape: number[];
-  refresh_data: null;
+  refresh_data: number;
   channel: ChannelIndex;
   signal: string;
   save: string;
@@ -133,9 +133,9 @@ export interface EndpointParams {
   data: {
     config: Record<string, null>;
     download: null;
-    hist: string;
-    tailsum: string;
-    pulse_height: string;
+    hist: null;
+    tailsum: null;
+    pulse_height: null;
   }
 }
 

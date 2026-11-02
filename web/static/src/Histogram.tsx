@@ -7,10 +7,9 @@ import type { EndpointParams } from "./types";
 
 interface HistogramProps {
   endpoint: AdapterEndpoint<EndpointParams>;
-  data_endpoint: AdapterEndpoint<{ value: EndpointParams["data"]["hist"] }>;
 }
 
-const Histogram = ({ endpoint, data_endpoint }: HistogramProps) => {
+const Histogram = ({ endpoint }: HistogramProps) => {
 
   const [min_height, setMinHeight] = useState(0);
   const [max_height, setMaxHeight] = useState(0);
@@ -36,12 +35,12 @@ const Histogram = ({ endpoint, data_endpoint }: HistogramProps) => {
 
   useEffect(() => {
     const fetch_data = async () => {
-      const hist = (await endpoint.get<{ "value": string }>("data/hist")).value;
+      const hist = (await endpoint.get<ArrayBuffer>("data/hist", { responseType: "arraybuffer" }));
       const reshaped_data: number[][] = [];
       if (hist) {
         try {
-          const tmp = Uint8Array.fromBase64(hist);
-          const buf = new Uint32Array(tmp.buffer);
+
+          const buf = new Uint32Array(hist);
 
           const dataset_length = numCols * numRows;
 
@@ -56,8 +55,8 @@ const Histogram = ({ endpoint, data_endpoint }: HistogramProps) => {
     }
 
     fetch_data();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chan, numCols, numRows, endpoint.data?.acq.graph.signal, data_endpoint?.data?.value]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chan, numCols, numRows, endpoint.data?.acq.graph.signal, endpoint.data?.acq.graph.refresh_data]);
 
   const onScatterDrag: MouseEventHandler<SVGCircleElement> = (e) => {
     if (e.buttons & 1) { // test that left click is held
@@ -127,16 +126,19 @@ const Histogram = ({ endpoint, data_endpoint }: HistogramProps) => {
   }
 
   useEffect(() => {
-    const newMinHeight = endpoint.data?.config.discrimination[`channel_${chan}`].height_min ?? 0;
-    const newMaxHeight = endpoint.data?.config.discrimination[`channel_${chan}`].height_max ?? 0;
-    const newTailsumLeft = endpoint.data?.config.discrimination[`channel_${chan}`].threshold_c ?? 0;
-    const newTailsumRight = endpoint.data?.config.discrimination[`channel_${chan}`].threshold_m ?? 0;
+    const updateScatter = async () => {
+      const newMinHeight = endpoint.data?.config.discrimination[`channel_${chan}`].height_min ?? 0;
+      const newMaxHeight = endpoint.data?.config.discrimination[`channel_${chan}`].height_max ?? 0;
+      const newTailsumLeft = endpoint.data?.config.discrimination[`channel_${chan}`].threshold_c ?? 0;
+      const newTailsumRight = endpoint.data?.config.discrimination[`channel_${chan}`].threshold_m ?? 0;
 
-    setMinHeight(newMinHeight >> height_shift);
-    setMaxHeight(newMaxHeight >> height_shift);
-    setTailsumLeft(newTailsumLeft >> tailsum_shift);
-    setTailsumRight((newTailsumLeft >> tailsum_shift) + ((newTailsumRight / (2 ** tailsum_shift)) * 65536));
-  }, [chan, endpoint.data?.config.discrimination, height_shift, tailsum_shift]);
+      setMinHeight(newMinHeight >> height_shift);
+      setMaxHeight(newMaxHeight >> height_shift);
+      setTailsumLeft(newTailsumLeft >> tailsum_shift);
+      setTailsumRight((newTailsumLeft >> tailsum_shift) + ((newTailsumRight / (2 ** tailsum_shift)) * 65536));
+    }
+    updateScatter();
+  }, [chan, endpoint.data?.config.discrimination, height_shift, tailsum_shift, endpoint.data?.acq.graph.refresh_data]);
 
 
   return (

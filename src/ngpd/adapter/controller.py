@@ -133,7 +133,7 @@ class NgpdController(BaseController):
             ),
             "graph": {
                 "refresh_data": (
-                    None,
+                    lambda: self.device.dataHandler.refresh_count,
                     lambda _: self.device.dataHandler.refresh_data(),
                     {
                         "description": "Tell the Data Handler to re-read the data from the NGPD"
@@ -214,12 +214,12 @@ class NgpdController(BaseController):
                     return self.device.get_saved_data(filename), "hdf5"
                 case "hist":
                     # get the Histogram data
-                    return {"value": self.device.dataHandler.get_data()}, "json"
+                    return self.device.dataHandler.get_data(), "bytes"
                 case "tailsum":
                     # get the Tailsum Data
-                    return {"value": self.device.dataHandler.get_tailsum()}, "json"
+                    return self.device.dataHandler.get_tailsum(), "bytes"
                 case "pulse_height":
-                    return {"value": self.device.dataHandler.get_pulse_height()}, "json"
+                    return self.device.dataHandler.get_pulse_height(), "bytes"
                 case _:
                     raise NgpdError(f"Unknown Data Path: {path}")
         except Exception as err:

@@ -20,7 +20,7 @@ class NgpdAdapter(ApiAdapter):
     error_cls = NgpdError
     version = __version__
 
-    @response_types("application/json", "application/vnd.odin-native", "application/x-hdf5", default="application/json")
+    @response_types("application/json", "application/vnd.odin-native", "application/x-hdf5", "application/octet-stream", default="application/json")
     @require_controller
     def get(self, path: str, request: HTTPServerRequest):
         """Handle a HTTP Get request, with overwridden handling for non-json requests."""
@@ -28,11 +28,17 @@ class NgpdAdapter(ApiAdapter):
         if stripped_path.startswith("data"):
             try:
                 splitpath = path.split("/", 1)
-                rest = splitpath[1] if len(splitpath) > 1 else None
+                rest = splitpath[1] if len(splitpath) > 1 else ""
                 logging.debug(f"GET request on special data path: {rest}")
                 ctrl: NgpdController = self.controller
                 response, filetype = ctrl.get_data(rest)
-                content_type = "application/x-hdf5" if filetype == "hdf5" else "application/json"
+                match filetype:
+                    case "hdf5":
+                        content_type = "application/x-hdf5"
+                    case "bytes":
+                        content_type = "application/octet-stream"
+                    case "json" | _:
+                        content_type = "application/json"
                 status_code = 200
             except self.error_cls as err:
                 response = {"error": str(err)}

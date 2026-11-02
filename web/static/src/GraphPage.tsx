@@ -6,10 +6,9 @@ import { channels, type EndpointParams } from "./types";
 
 interface GraphPageProps {
   endpoint: AdapterEndpoint<EndpointParams>;
-  data_endpoint: AdapterEndpoint<{value: EndpointParams["data"]["hist"]}>;
 }
 
-const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
+const GraphPage = ({ endpoint }: GraphPageProps) => {
 
   const { setError } = useError();
   const [tailsum_data, setTailsum_data] = useState<number[][]>([]);
@@ -24,12 +23,11 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
 
   useEffect(() => {
     const fetch_data = async () => {
-      const tailsum = (await endpoint.get<{ "value": string }>("data/tailsum")).value;
+      const tailsum = (await endpoint.get<ArrayBuffer>("data/tailsum", { responseType: "arraybuffer" }));
       const reshaped_data: number[][] = [];
       if (tailsum) {
         try {
-          const tmp = Uint8Array.fromBase64(tailsum);
-          const buf = new Uint32Array(tmp.buffer);
+          const buf = new Uint32Array(tailsum);
 
           for (let i = 0; i < buf.length; i += tailsum_bins) {
             reshaped_data.push(Array.from(buf.slice(i, i + tailsum_bins)))
@@ -47,16 +45,15 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
 
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [height_bins, tailsum_bins, endpoint.data?.acq.graph.channel, data_endpoint?.data?.value])
+  }, [height_bins, tailsum_bins, endpoint.data?.acq.graph.channel, endpoint.data?.acq.graph.refresh_data])
 
   useEffect(() => {
     const fetch_data = async () => {
-      const pulseheight = (await endpoint.get<{ "value": string }>("data/pulse_height")).value;
+      const pulseheight = (await endpoint.get<ArrayBuffer>("data/pulse_height", { responseType: "arraybuffer" }));
       const reshaped_data: number[][] = [];
       if (pulseheight) {
         try {
-          const tmp = Uint8Array.fromBase64(pulseheight);
-          const buf = new Uint32Array(tmp.buffer);
+          const buf = new Uint32Array(pulseheight);
 
           for (let i = 0; i < buf.length; i += height_bins) {
             reshaped_data.push(Array.from(buf.slice(i, i + height_bins)))
@@ -74,7 +71,7 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
 
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [height_bins, tailsum_bins, endpoint.data?.acq.graph.channel, data_endpoint?.data?.value])
+  }, [height_bins, tailsum_bins, endpoint.data?.acq.graph.channel, endpoint.data?.acq.graph.refresh_data])
 
   const create_file_name = () => {
     const now = new Date();
@@ -121,7 +118,7 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
       <Col xs="auto">
         <ButtonGroup size="sm">
           <OverlayTrigger placement="auto" overlay={<Tooltip>Ensure the displayed data is the lastest from the device.</Tooltip>}>
-            <EndpointButton endpoint={endpoint} fullpath="acq/graph/refresh_data" value={true} post_method={() => data_endpoint.get()}>
+            <EndpointButton endpoint={endpoint} fullpath="acq/graph/refresh_data" value={true}>
               Refresh Graph
             </EndpointButton>
           </OverlayTrigger>
@@ -149,7 +146,7 @@ const GraphPage = ({ endpoint, data_endpoint }: GraphPageProps) => {
           <TitleCard title={Controls}>
             <Row>
               <Col>
-                <Histogram endpoint={endpoint} data_endpoint={data_endpoint}/>
+                <Histogram endpoint={endpoint} />
               </Col>
             </Row>
             <Row>

@@ -197,6 +197,8 @@ class NgpdData:
         self.chan = 0
         self.select_display: Literal["neutron", "gamma", "pileup", "all"] = "all"
 
+        self.refresh_count = 0
+
     def configure(self, ngpd: PyNgpd):
         """Configure the data handler to use the ngpd class object."""
         self.ngpd = ngpd
@@ -225,8 +227,10 @@ class NgpdData:
         self.tail_sum_data = tail_data
         self.pulse_height_data = pulse_data
 
+        self.refresh_count += 1
+
     def get_data(self):
-        """Get Data as Base64 encoded string, for better HTTP transfer."""
+        """Get Histogram Data as Bytes."""
         if self.select_display == "all":
             data: NDArray = self.data.sum(0, dtype=np.uint32)
         else:
@@ -235,18 +239,15 @@ class NgpdData:
         logging.debug(f"Max Data: {np.max(data)}")
         logging.debug(f"Data Shape: {data.shape}")
         logging.debug(f"Data Type: {data.dtype}")
-        encoded = base64.b64encode(np.ascontiguousarray(data))
-        return encoded.decode("utf-8")
+        return data.tobytes()
 
     def get_pulse_height(self):
-        """Get Pulse height data as Base64 string."""
-        encoded = base64.b64encode(np.ascontiguousarray(self.pulse_height_data))
-        return encoded.decode("utf-8")
+        """Get Pulse height data as Bytes."""
+        return self.pulse_height_data.tobytes()
 
     def get_tailsum(self):
-        """Get Tail Sum data as Base64 string."""
-        encoded = base64.b64encode(np.ascontiguousarray(self.tail_sum_data))
-        return encoded.decode("utf-8")
+        """Get Tail Sum data as Bytes."""
+        return self.tail_sum_data.tobytes()
 
     def set_channel(self, chan: int):
         """Set the channel to read data from, and refresh data."""
