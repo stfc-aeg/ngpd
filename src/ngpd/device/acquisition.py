@@ -1,6 +1,5 @@
 """Acquisition Class module."""
 
-import base64
 import logging
 import h5py
 from numpy.typing import NDArray
@@ -202,6 +201,7 @@ class NgpdData:
     def configure(self, ngpd: PyNgpd):
         """Configure the data handler to use the ngpd class object."""
         self.ngpd = ngpd
+        self.refresh_data()
 
     @UsesNgpdLibrary
     def refresh_data(self):
@@ -210,44 +210,37 @@ class NgpdData:
         logging.debug(f"Data Shape: {self.data.shape}")
         self.data_shape = self.data.shape
 
-        # creating datasets for line graphs by summing bins together
-        # also adding an "exta" dataset thats the total for each (assuming its 3 datasets for separate NGP)
-        pulse_data: NDArray = self.data.sum(1, dtype=np.uint32)
-        if pulse_data.shape[0] == 3:
-            pulse_data: NDArray = np.append(
-                pulse_data, [pulse_data.sum(0, dtype=np.uint32)], 0
-            )
-        logging.debug(f"Pulse Data Shape: {pulse_data.shape}")
-
-        tail_data: NDArray = self.data.sum(2, dtype=np.uint32)
-        if tail_data.shape[0] == 3:
-            tail_data = np.append(tail_data, [tail_data.sum(0, dtype=np.uint32)], 0)
-        logging.debug(f"Tail Data Shape: {tail_data.shape}")
-
-        self.tail_sum_data = tail_data
-        self.pulse_height_data = pulse_data
+        self.tail_sum_data: NDArray = self.data.sum(2, dtype=np.uint32)
+        self.pulse_height_data: NDArray = self.data.sum(1, dtype=np.uint32)
 
         self.refresh_count += 1
 
     def get_data(self):
         """Get Histogram Data as Bytes."""
-        if self.select_display == "all":
-            data: NDArray = self.data.sum(0, dtype=np.uint32)
-        else:
-            data: NDArray = self.data[HistDisplay[self.select_display]]
-        logging.debug("Encoding Data")
-        logging.debug(f"Max Data: {np.max(data)}")
-        logging.debug(f"Data Shape: {data.shape}")
-        logging.debug(f"Data Type: {data.dtype}")
-        return data.tobytes()
+        hist_data = self.data
+        if hist_data.shape[0] > 1:
+            hist_data: NDArray = np.append(
+                hist_data, [hist_data.sum(0, dtype=np.uint32)], 0
+            )
+        return hist_data.tobytes()
 
     def get_pulse_height(self):
         """Get Pulse height data as Bytes."""
-        return self.pulse_height_data.tobytes()
+        pulse_data = self.pulse_height_data
+        if pulse_data.shape[0] > 1:
+            pulse_data: NDArray = np.append(
+                pulse_data, [pulse_data.sum(0, dtype=np.uint32)], 0
+            )
+        return pulse_data.tobytes()
 
     def get_tailsum(self):
         """Get Tail Sum data as Bytes."""
-        return self.tail_sum_data.tobytes()
+        tail_data = self.tail_sum_data
+        if tail_data.shape[0] > 1:
+            tail_data: NDArray = np.append(
+                tail_data, [tail_data.sum(0, dtype=np.uint32)], 0
+            )
+        return tail_data.tobytes()
 
     def set_channel(self, chan: int):
         """Set the channel to read data from, and refresh data."""

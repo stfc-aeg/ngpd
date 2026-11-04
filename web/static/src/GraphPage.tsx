@@ -1,8 +1,8 @@
 import { EndpointButton, EndpointCheckbox, EndpointDropdown, EndpointInput, EndpointSelect, OdinGraph, TitleCard, useError, type AdapterEndpoint } from "@dssg/odin-react";
 import { useEffect, useState, useTransition } from "react";
-import { ButtonGroup, Col, Container, DropdownItem, FloatingLabel, Form, InputGroup, OverlayTrigger, ProgressBar, Row, Tooltip } from "react-bootstrap";
+import { ButtonGroup, Col, Container, Dropdown, DropdownButton, DropdownItem, FloatingLabel, Form, InputGroup, OverlayTrigger, ProgressBar, Row, Tooltip, type DropdownButtonProps } from "react-bootstrap";
 import { Histogram } from "./Histogram";
-import { channels, type EndpointParams } from "./types";
+import { channels, type EndpointParams, type DatasetName } from "./types";
 
 interface GraphPageProps {
   endpoint: AdapterEndpoint<EndpointParams>;
@@ -13,6 +13,7 @@ const GraphPage = ({ endpoint }: GraphPageProps) => {
   const { setError } = useError();
   const [tailsum_data, setTailsum_data] = useState<number[][]>([]);
   const [pulseheight_data, setPulseheight_data] = useState<number[][]>([]);
+  const [selected_dataset, setSelectedDataset] = useState<DatasetName>("all");
   const [downloadPending, startTransition] = useTransition();
 
   const shape = endpoint.data?.acq.graph.data_shape ?? [1, 1024, 1024];
@@ -73,6 +74,12 @@ const GraphPage = ({ endpoint }: GraphPageProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [height_bins, tailsum_bins, endpoint.data?.acq.graph.channel, endpoint.data?.acq.graph.refresh_data])
 
+  const selectSignal: DropdownButtonProps["onSelect"] = (eventKey) => {
+    if(eventKey) {
+      setSelectedDataset(eventKey as DatasetName);
+    }
+  }
+
   const create_file_name = () => {
     const now = new Date();
     const timestamp = now.toISOString();
@@ -109,7 +116,12 @@ const GraphPage = ({ endpoint }: GraphPageProps) => {
               <DropdownItem eventKey={chan} key={chan} active={endpoint.data?.acq.graph.channel == chan}>{chan}</DropdownItem>
             ))}
           </EndpointDropdown>
-          <EndpointDropdown endpoint={endpoint} fullpath="acq/graph/signal" title={`Signal: ${endpoint.data?.acq.graph.signal}`} />
+          <DropdownButton title={`Signal: ${selected_dataset}`} onSelect={selectSignal}>
+            <Dropdown.Item eventKey="all">All</Dropdown.Item>
+            <Dropdown.Item eventKey="neutron">Neutron</Dropdown.Item>
+            <Dropdown.Item eventKey="gamma">Gamma</Dropdown.Item>
+            <Dropdown.Item eventKey="pileup">Pileup</Dropdown.Item>
+          </DropdownButton>
         </InputGroup>
       </Col>
       <Col>
@@ -146,7 +158,7 @@ const GraphPage = ({ endpoint }: GraphPageProps) => {
           <TitleCard title={Controls}>
             <Row>
               <Col>
-                <Histogram endpoint={endpoint} />
+                <Histogram endpoint={endpoint} selected_dataset={selected_dataset}/>
               </Col>
             </Row>
             <Row>

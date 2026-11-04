@@ -49,18 +49,24 @@ const Heatmap = ({ data }: HeatmapProps) => {
   useEffect(() => {
     const start = Date.now();
     const canvas = ref.current;
-    const ctx = canvas?.getContext("2d");
+    const ctx = canvas?.getContext("2d", {alpha: false});
     const colour = scaleSequentialSqrt(interpolateInferno).domain([min ?? 0, max ?? 1024]);
     if (canvas && ctx) {
       const cellWidth = canvas.width / numCols;
       const cellHeight = canvas.height / numRows;
 
-      ctx.clearRect(0, 0, ctx.canvas.clientWidth, ctx.canvas.clientHeight)
+      ctx.clearRect(0, 0, ctx.canvas.clientWidth, ctx.canvas.clientHeight);
+      // fill the "background" with the 0 value.
+      // this way we don't need to create a rect for every cell that is 0, speeding up the rendering of the canvas significantly
+      ctx.fillStyle = colour(0);
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       for (const [i, row] of data.entries()) {
         for (const [j, d] of row.entries()) {
-          ctx.fillStyle = colour(d);
-          // The +1 to width and height is to avoid graphical glitches, so each cell very slightly overlaps the ones next to it
-          ctx.fillRect(j * cellWidth, i * cellHeight, cellWidth + 1, cellHeight + 1);
+          if (d != 0) {
+            ctx.fillStyle = colour(d);
+            // The +1 to width and height is to avoid graphical glitches, so each cell very slightly overlaps the ones next to it
+            ctx.fillRect(j * cellWidth, i * cellHeight, cellWidth + 1, cellHeight + 1);
+          }
         }
       }
     }
@@ -70,7 +76,7 @@ const Heatmap = ({ data }: HeatmapProps) => {
 
   return (
     <>
-      <canvas id="heatmapCanvas" ref={ref} className={styles.heatmapCanvas} onMouseMove={handleMouseMove} onMouseLeave={() => setHovered(null)} />
+      <canvas id="heatmapCanvas" ref={ref} className={styles.heatmapCanvas} onMouseMove={handleMouseMove} onMouseLeave={() => setHovered(null)} height={512} width={1024}/>
       <ColourBar colourScale={colour} min={min} max={max} />
       {hovered &&
         <div className={styles.tooltip} style={{ left: hovered.x, top: hovered.y }}>

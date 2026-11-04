@@ -3,19 +3,22 @@ import { useEffect, useState, type ComponentProps, type MouseEventHandler } from
 import { Axes, Heatmap, Scatter } from "./histogram";
 import styles from "./histogram/style.module.css";
 import { getDimensions } from "./histogram/util";
-import type { EndpointParams } from "./types";
+import type { EndpointParams, DatasetName } from "./types";
 
 interface HistogramProps {
   endpoint: AdapterEndpoint<EndpointParams>;
+  selected_dataset: DatasetName;
 }
 
-const Histogram = ({ endpoint }: HistogramProps) => {
+
+
+const Histogram = ({ endpoint, selected_dataset }: HistogramProps) => {
 
   const [min_height, setMinHeight] = useState(0);
   const [max_height, setMaxHeight] = useState(0);
   const [tailsum_left, setTailsumLeft] = useState(0);
   const [tailsum_right, setTailsumRight] = useState(0);
-  const [hist_data, setHist_data] = useState<number[][]>([]);
+  const [hist_data, setHist_data] = useState<Record<DatasetName, number[][]> | null>(null);
 
   const shape = endpoint.data?.acq.graph.data_shape ?? [1, 1024, 1024];
   const chan = endpoint.data?.acq.graph.channel ?? 0;
@@ -36,27 +39,32 @@ const Histogram = ({ endpoint }: HistogramProps) => {
   useEffect(() => {
     const fetch_data = async () => {
       const hist = (await endpoint.get<ArrayBuffer>("data/hist", { responseType: "arraybuffer" }));
-      const reshaped_data: number[][] = [];
+      const dataset_names: DatasetName[] = ["neutron", "gamma", "pileup", "all"];
+      const datasets: Record<string, number[][]> = {};
       if (hist) {
         try {
 
           const buf = new Uint32Array(hist);
-
+          
           const dataset_length = numCols * numRows;
-
-          for (let i = 0; i < dataset_length; i += numRows) {
-            reshaped_data.push(Array.from(buf.slice(i, i + numCols)))
-          }
+          let reshaped_data: number[][] = [];
+          for(let j = 0; j < buf.length; j+= dataset_length){
+            reshaped_data = [];
+            for (let i = j; i < j+dataset_length; i += numRows) {
+              reshaped_data.push(Array.from(buf.slice(i, i + numCols)))
+            }
+            datasets[dataset_names[j / dataset_length]] = reshaped_data;
+        }
         } catch (err) {
           console.log(err);
         }
       }
-      setHist_data(reshaped_data);
+      setHist_data(datasets);
     }
 
     fetch_data();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chan, numCols, numRows, endpoint.data?.acq.graph.signal, endpoint.data?.acq.graph.refresh_data]);
+  }, [chan, numCols, numRows, endpoint.data?.acq.graph.refresh_data]);
 
   const onScatterDrag: MouseEventHandler<SVGCircleElement> = (e) => {
     if (e.buttons & 1) { // test that left click is held
@@ -145,7 +153,7 @@ const Histogram = ({ endpoint }: HistogramProps) => {
     <div className={styles.heatmap}>
       <Axes xRange={[0, numCols]} yRange={[0, numRows]} step={128} xLabel="Pulse Height" yLabel="Tail Sum" />
       <Scatter data={scatterData} xRange={[0, numCols]} yRange={[0, numRows]} onMouseDrag={onScatterDrag} onMouseUp={onScatterRelease} />
-      <Heatmap data={hist_data} />
+      <Heatmap data={hist_data?.[selected_dataset] ?? []} />
     </div>
   )
 }

@@ -4,6 +4,7 @@
     position: relative;
     z-index: 1;
     cursor: crosshair;
+    image-rendering: pixelated;
 }
 
 .tooltip {

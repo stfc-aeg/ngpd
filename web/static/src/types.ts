@@ -140,3 +140,4 @@ export interface EndpointParams {
 }
 
 export const channels: readonly ChannelIndex[] = [0, 1, 2, 3, 4, 5, 6, 7];
+export type DatasetName = "neutron" | "gamma" | "pileup" | "all";
