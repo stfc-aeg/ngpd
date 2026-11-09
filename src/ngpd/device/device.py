@@ -216,6 +216,10 @@ class NgpdDevice:
         self.acquisition.configure(self.ngpd)
         self.dataHandler.configure(self.ngpd)
 
+    def cleanup(self):
+        """Ensure the connection to the device is properly closed and cleaned-up."""
+        self.ngpd.cleanup()
+
     @property
     def adc_temp(self):
         """Temperature of the ADCs on the PCB."""

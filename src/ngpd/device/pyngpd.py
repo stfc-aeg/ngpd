@@ -85,6 +85,7 @@ VOLTAGE_SIGNAL_NAMES = [
 
 ITFG_State = Literal["error, paused, counting, not_counting, idle"]
 
+
 class DummyLevel(IntFlag):
     """Defines level of Dummy parts to the system, IE how much to simulate."""
 
@@ -113,7 +114,6 @@ class ScopeStatus(IntFlag):
     ITFG_COUNTING = auto()
 
     ERROR = 0
-
 
 
 class FilterType(IntEnum):
@@ -274,9 +274,10 @@ class PyNgpd:
         self.first_crad = first_card
         self.dummy = dummy
         c_ip_addr = ffi.new("char[]", ipaddr.encode())
+        debug = 0
 
         self.path = lib.ngpd_config_ngzmp(
-            num_cards, c_ip_addr, -1, ffi.NULL, -1, 0, first_card, 0, dummy
+            num_cards, c_ip_addr, -1, ffi.NULL, -1, debug, first_card, 0, dummy
         )
 
         if self.path < 0:
@@ -286,6 +287,14 @@ class PyNgpd:
         self.itfg_setup = ITFGSetup(1, lib.NGPDTrigSW, 1)
 
         logging.debug("Completed NGPD Init")
+
+    def cleanup(self):
+        """Cleanup method when shutting down/restarting Python.
+
+        Ensures any file handles, sockets, etc are closed properly.
+        """
+        logging.debug("Closing NGPD")
+        lib.ngpd_close(self.path)
 
     def get_error_message(self) -> str:
         """Get the Error message from the cffi Library."""
@@ -727,11 +736,9 @@ class PyNgpd:
             logging.error(self.get_error_message())
             return None
         status = ITFGStatus(
-            ScopeStatus(itfg_status.flags),
-            itfg_status.cycles,
-            itfg_status.timer_us
+            ScopeStatus(itfg_status.flags), itfg_status.cycles, itfg_status.timer_us
         )
-        
+
         return status
 
     def read_histogram(self, chan=0):

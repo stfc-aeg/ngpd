@@ -77,6 +77,8 @@ def ngpd_get_num_chan(path: int) -> int:
 def ngpd_get_error_message() -> str:
     """Get latest error message."""
 
+def ngpd_close(path: int):
+    """Close the connection to the NGPD card(s)."""
 
 def ngpd_i2c_write_preamp_offset(path: int, chan: int, num: int, data: memoryview) -> int:
     """Write values into the ADC Preamp."""

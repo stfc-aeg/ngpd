@@ -190,6 +190,7 @@ class NgpdController(BaseController):
     def cleanup(self):
         """Clean up controller resources and state."""
         logging.info("Cleaning up NgpdController")
+        self.device.cleanup()
 
     def get(self, path, with_metadata=False):
         """Get data from the controller at the specified path."""

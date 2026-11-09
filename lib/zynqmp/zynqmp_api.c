@@ -1428,6 +1428,11 @@ static int32_t responseTransaction2(int fd, u_int8_t* transaction, u_int32_t byt
 			snprintf(error_message, ZYNQMP_MAX_ERROR_MESSAGE, "responseTransaction2: Reading protocol header response from server failed errno=%d ", sock_errno);
 			return ZYNQMP_ERROR;
 		}
+		if (rc == 0)
+		{
+			snprintf(error_message, ZYNQMP_MAX_ERROR_MESSAGE, "responseTransaction2: Reading Protocol returned 0 bytes, likely meaning the socket has closed");
+			return ZYNQMP_ERROR;
+		}
 		bytes -= rc;
 		p8 += rc;
 	}
