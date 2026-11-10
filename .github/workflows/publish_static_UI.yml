@@ -34,7 +34,7 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v3
         with:
-          working-directory: web/static
+          working_directory: web/static
           files: |
             dist.tgz
             dist.zip
