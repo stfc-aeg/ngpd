@@ -2,8 +2,9 @@ name: publish_build
 run-name: Building and Publishing static GUI
 on: 
   push:
-    branches:
-      - feature/GUIWorkflow
+    tags:
+      - "*"
+
 permissions:
   contents: write
 
