@@ -1,0 +1,1 @@
+This folder exists as a default location to save Histogram data to
