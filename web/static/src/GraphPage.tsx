@@ -3,6 +3,7 @@ import { useEffect, useState, useTransition } from "react";
 import { ButtonGroup, Col, Container, Dropdown, DropdownButton, DropdownItem, FloatingLabel, Form, InputGroup, OverlayTrigger, ProgressBar, Row, Tooltip, type DropdownButtonProps } from "react-bootstrap";
 import { Histogram } from "./Histogram";
 import { channels, type EndpointParams, type DatasetName } from "./types";
+import { Floppy, Download, ArrowClockwise } from "react-bootstrap-icons";
 
 interface GraphPageProps {
   endpoint: AdapterEndpoint<EndpointParams>;
@@ -22,7 +23,7 @@ const GraphPage = ({ endpoint }: GraphPageProps) => {
     tailsum_bins: shape[1]
   }
 
-  useEffect(() => {
+  useEffect(() => {  // Fetch Tailsum Graph Data
     const fetch_data = async () => {
       const tailsum = (await endpoint.get<ArrayBuffer>("data/tailsum", { responseType: "arraybuffer" }));
       const reshaped_data: number[][] = [];
@@ -48,7 +49,7 @@ const GraphPage = ({ endpoint }: GraphPageProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [height_bins, tailsum_bins, endpoint.data?.acq.graph.channel, endpoint.data?.acq.graph.refresh_data])
 
-  useEffect(() => {
+  useEffect(() => {  // Fetch Pulse Height Graph Data
     const fetch_data = async () => {
       const pulseheight = (await endpoint.get<ArrayBuffer>("data/pulse_height", { responseType: "arraybuffer" }));
       const reshaped_data: number[][] = [];
@@ -110,7 +111,7 @@ const GraphPage = ({ endpoint }: GraphPageProps) => {
   const Controls = (
     <Row>
       <Col>
-        <InputGroup size="sm">
+        <InputGroup>
           <EndpointDropdown endpoint={endpoint} fullpath="acq/graph/channel" title={`Channel ${endpoint.data?.acq.graph.channel}`} variant="secondary">
             {channels.map((chan) => (
               <DropdownItem eventKey={chan} key={chan} active={endpoint.data?.acq.graph.channel == chan}>{chan}</DropdownItem>
@@ -128,22 +129,22 @@ const GraphPage = ({ endpoint }: GraphPageProps) => {
         <h3>Histogram</h3>
       </Col>
       <Col xs="auto">
-        <ButtonGroup size="sm">
-          <OverlayTrigger placement="auto" overlay={<Tooltip>Ensure the displayed data is the lastest from the device.</Tooltip>}>
+        <ButtonGroup>
+          <OverlayTrigger placement="auto" overlay={<Tooltip>Refresh the data, reading from the device.</Tooltip>}>
             <EndpointButton endpoint={endpoint} fullpath="acq/graph/refresh_data" value={true}>
-              Refresh Graph
+              <ArrowClockwise/>
             </EndpointButton>
           </OverlayTrigger>
-          <OverlayTrigger placement="auto" overlay={<Tooltip>Save the data to a HDF5 file.</Tooltip>}>
+          <OverlayTrigger placement="auto" overlay={<Tooltip>Save the Histogram data to a HDF5 file.</Tooltip>}>
             <EndpointButton endpoint={endpoint} fullpath="acq/graph/save" disabled={downloadPending} pre_method={create_file_name} variant="secondary">
-              Save Data
+              <Floppy/>
             </EndpointButton>
           </OverlayTrigger>
-          <OverlayTrigger placement="auto" overlay={<Tooltip>Save the data to a HDF5 file, and download it.</Tooltip>}>
+          <OverlayTrigger placement="auto" overlay={<Tooltip>Save the Histogram data to a HDF5 file, and download it.</Tooltip>}>
             <EndpointButton endpoint={endpoint} fullpath="acq/graph/save" disabled={downloadPending} variant="secondary"
               pre_method={create_file_name} post_method={({ value }: { value?: string }) => startTransition(async () => download_file(value!))}
               post_args={{ value: undefined }} >
-              {downloadPending ? "Downloading..." : "Save and Download Data"}
+              {downloadPending ? "Downloading..." : <Download/>}
             </EndpointButton>
           </OverlayTrigger>
         </ButtonGroup>

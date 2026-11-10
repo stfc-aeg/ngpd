@@ -1,7 +1,8 @@
 import { EndpointButton, EndpointCheckbox, EndpointDoubleSlider, EndpointInput, EndpointSelect, FileUpload, TitleCard, useError, type AdapterEndpoint } from "@dssg/odin-react";
 import type { SubmitEventHandler } from "react";
-import { useRef, useTransition } from "react";
-import { Button, Col, Container, FloatingLabel, Form, InputGroup, OverlayTrigger, Row, Stack, Tab, Tabs, Tooltip } from "react-bootstrap";
+import { useRef, useState, useTransition } from "react";
+import { Button, Col, Container, FloatingLabel, Form, InputGroup, OverlayTrigger, Row, Stack, Tab, Tabs, Tooltip, Dropdown } from "react-bootstrap";
+import { Floppy, Download } from "react-bootstrap-icons";
 import type { EndpointParams } from "./types";
 import { channels } from "./types";
 interface ConfigPageProps {
@@ -90,6 +91,8 @@ const ConfigPage = ({ endpoint }: ConfigPageProps) => {
 
   const { setError } = useError();
   const [transferPending, startTransition] = useTransition();
+
+  const [filename, setFilename] = useState("");
 
   const download_file = async (filename: string) => {
     try {
@@ -389,10 +392,30 @@ const ConfigPage = ({ endpoint }: ConfigPageProps) => {
               <Form.Group as={Row}>
                 <Form.Label>Save New</Form.Label>
                 <InputGroup>
-                  <EndpointInput endpoint={endpoint} fullpath={`config/settings_file/save`} />
-                  <Button disabled={transferPending} onClick={() => startTransition(async () => download_file(endpoint.data?.config.settings_file.save ?? ""))}>
-                    Download
-                  </Button>
+                  <OverlayTrigger overlay={<Tooltip>Enter new Filename.</Tooltip>}>
+                    <Form.Control onChange={(e) => setFilename(e.target.value)} />
+                  </OverlayTrigger>
+                  <OverlayTrigger overlay={<Tooltip>Save Current config as new file.</Tooltip>}>
+                    <EndpointButton endpoint={endpoint} fullpath={"config/settings_file/save"} value={filename} variant="secondary">
+                      <Floppy />
+                    </EndpointButton>
+                  </OverlayTrigger>
+                  <Dropdown>
+                    <OverlayTrigger overlay={<Tooltip>Download a saved Config File</Tooltip>}>
+                      <Dropdown.Toggle variant="secondary">
+                        <Download />
+                      </Dropdown.Toggle>
+                    </OverlayTrigger>
+                    <Dropdown.Menu>
+                      <Dropdown.Header>Select File to Download</Dropdown.Header>
+                      {endpoint.data?.config.settings_file.available.map((filename) => (
+                        <Dropdown.Item as="button" key={filename} disabled={transferPending}
+                          onClick={() => startTransition(async () => download_file(filename ?? ""))}>
+                          {filename}
+                        </Dropdown.Item>
+                      ))}
+                    </Dropdown.Menu>
+                  </Dropdown>
                 </InputGroup>
               </Form.Group>
             </Col>
