@@ -1,47 +1,40 @@
 name: publish_build
-run-name: Building and Publishing static Example site
+run-name: Building and Publishing static GUI
 on: 
   push:
     tags:
-      - '*'
+      - "*"
+
+permissions:
+  contents: write
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
-
     defaults:
       run:
-        working-directory: control/test/static/ngpd-react
-
-    strategy:
-      matrix:
-        node-version: [16.x]
-
+        working-directory: web/static
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
-      - name: use node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Check directory
+        run: pwd
+      - name: Setup Node
+        uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node-version }}
-      - name: clean install app
+          node-version: 22.12.0
+      - name: Install dependencies
         run: npm ci
-      - name: Build App
+      - name: Build GUI
         run: npm run build
       - name: Create TGZ archive
-        run: |
-          cd build
-          tar -cvzf app_build.tgz app
+        run: tar -cvzf dist.tgz dist
       - name: Create ZIP Archive
-        run: |
-          cd build
-          zip -r app_build.zip app
-      - name: List Built Files
-        run: ls -lR build
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
+        run: zip -r dist.zip dist
+      - name: Release
+        uses: softprops/action-gh-release@v3
         with:
+          working_directory: web/static
           files: |
-            control/test/static/ngpd-react/build/app_build.tgz
-            control/test/static/ngpd-react/build/app_build.zip
+            dist.tgz
+            dist.zip
