@@ -24,12 +24,8 @@ jobs:
           node-version: 22.12.0
       - name: Install dependencies
         run: npm ci
-        with:
-          working-directory: web/static
       - name: Build GUI
         run: npm run build
-        with:
-          working-directory: web/static
       - name: Create TGZ archive
         run: tar -cvzf dist.tgz dist
       - name: Create ZIP Archive
