@@ -4,7 +4,7 @@ import logging
 
 from odin_control.adapters.adapter import ApiAdapter
 from odin_control.adapters.response import ApiAdapterResponse
-from odin_control.adapters.util import require_controller, response_types
+from odin_control.adapters.util import require_controller, response_types, request_types
 from tornado.httputil import HTTPServerRequest
 
 from ngpd.adapter.controller import NgpdController
@@ -49,20 +49,13 @@ class NgpdAdapter(ApiAdapter):
             return super().get(path, request)
     
     @require_controller
+    @request_types("application/json", "multipart/form-data")
     def post(self, path: str, request: HTTPServerRequest):
         """Handle a HTTP Post request.
 
         This overwridden method includes custom handling for multipart/form-data MIME types.
         """
-        accept_type = (
-            request.headers["Content-Type"].split(";")[0]
-            if "Content-Type" in request.headers
-            else "*/*"
-        )
-        if (
-            accept_type == "multipart/form-data"
-            and path.strip("/") == "config/settings_file/load"
-        ):
+        if path.strip("/") == "config/settings_file/load":
             try:
                 file = request.files["file"][0]
                 ctrl: NgpdController = self.controller
