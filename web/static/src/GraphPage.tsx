@@ -1,9 +1,9 @@
 import { EndpointButton, EndpointCheckbox, EndpointDropdown, EndpointInput, EndpointSelect, OdinGraph, TitleCard, useError, type AdapterEndpoint } from "@dssg/odin-react";
 import { useEffect, useState, useTransition } from "react";
-import { ButtonGroup, Col, Container, Dropdown, DropdownButton, DropdownItem, FloatingLabel, Form, InputGroup, OverlayTrigger, ProgressBar, Row, Tooltip, type DropdownButtonProps } from "react-bootstrap";
+import { Button, ButtonGroup, Col, Container, Dropdown, DropdownButton, DropdownItem, FloatingLabel, Form, InputGroup, Modal, OverlayTrigger, ProgressBar, Row, Tooltip, type DropdownButtonProps } from "react-bootstrap";
+import { ArrowClockwise, Download, Floppy } from "react-bootstrap-icons";
 import { Histogram } from "./Histogram";
-import { channels, type EndpointParams, type DatasetName } from "./types";
-import { Floppy, Download, ArrowClockwise } from "react-bootstrap-icons";
+import { channels, type DatasetName, type EndpointParams } from "./types";
 
 interface GraphPageProps {
   endpoint: AdapterEndpoint<EndpointParams>;
@@ -15,6 +15,7 @@ const GraphPage = ({ endpoint }: GraphPageProps) => {
   const [tailsum_data, setTailsum_data] = useState<number[][]>([]);
   const [pulseheight_data, setPulseheight_data] = useState<number[][]>([]);
   const [selected_dataset, setSelectedDataset] = useState<DatasetName>("all");
+  const [showRunModel, setShow] = useState(false);
   const [downloadPending, startTransition] = useTransition();
 
   const shape = endpoint.data?.acq.graph.data_shape ?? [1, 1024, 1024];
@@ -76,7 +77,7 @@ const GraphPage = ({ endpoint }: GraphPageProps) => {
   }, [height_bins, tailsum_bins, endpoint.data?.acq.graph.channel, endpoint.data?.acq.graph.refresh_data])
 
   const selectSignal: DropdownButtonProps["onSelect"] = (eventKey) => {
-    if(eventKey) {
+    if (eventKey) {
       setSelectedDataset(eventKey as DatasetName);
     }
   }
@@ -124,32 +125,138 @@ const GraphPage = ({ endpoint }: GraphPageProps) => {
             <Dropdown.Item eventKey="pileup">Pileup</Dropdown.Item>
           </DropdownButton>
         </InputGroup>
+
       </Col>
+
       <Col>
         <h3>Histogram</h3>
+      </Col>
+      <Col xs="auto">
+        <Button onClick={() => setShow(true)}>Setup Acquisition</Button>
       </Col>
       <Col xs="auto">
         <ButtonGroup>
           <OverlayTrigger placement="auto" overlay={<Tooltip>Refresh the data, reading from the device.</Tooltip>}>
             <EndpointButton endpoint={endpoint} fullpath="acq/graph/refresh_data" value={true}>
-              <ArrowClockwise/>
+              <ArrowClockwise />
             </EndpointButton>
           </OverlayTrigger>
           <OverlayTrigger placement="auto" overlay={<Tooltip>Save the Histogram data to a HDF5 file.</Tooltip>}>
             <EndpointButton endpoint={endpoint} fullpath="acq/graph/save" disabled={downloadPending} pre_method={create_file_name} variant="secondary">
-              <Floppy/>
+              <Floppy />
             </EndpointButton>
           </OverlayTrigger>
           <OverlayTrigger placement="auto" overlay={<Tooltip>Save the Histogram data to a HDF5 file, and download it.</Tooltip>}>
             <EndpointButton endpoint={endpoint} fullpath="acq/graph/save" disabled={downloadPending} variant="secondary"
               pre_method={create_file_name} post_method={({ value }: { value?: string }) => startTransition(async () => download_file(value!))}
               post_args={{ value: undefined }} >
-              {downloadPending ? "Downloading..." : <Download/>}
+              {downloadPending ? "Downloading..." : <Download />}
             </EndpointButton>
           </OverlayTrigger>
         </ButtonGroup>
       </Col>
     </Row>
+  )
+
+  const RunModel = (
+    <Modal show={showRunModel} onHide={() => setShow(false)} size="lg">
+      <Modal.Header closeButton>
+        <Modal.Title>Configure and Run Acquisition</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <Row>
+          <Col>
+            <Row>
+              <Form.Label column>Pulse Height</Form.Label>
+              <Col lg={{ order: "last", span: "auto" }} xs={{ order: "first" }}>
+                <div style={{ paddingTop: "26px" }} />
+              </Col>
+            </Row>
+          </Col>
+          <Col>
+            <Row>
+              <Form.Label column>Tail Sum</Form.Label>
+              <Col lg={{ order: "last", span: "auto" }} xs={{ order: "first" }} style={{ alignContent: "center" }}><EndpointCheckbox endpoint={endpoint} fullpath="config/histogram/separate_ngp" type="switch" label="Separate NGP" /></Col>
+            </Row>
+          </Col>
+        </Row>
+        <Row>
+          <Col>
+            <InputGroup>
+              <FloatingLabel label="Bit Shift">
+                <EndpointInput endpoint={endpoint} fullpath="config/histogram/shift_height" size="sm" />
+              </FloatingLabel>
+              <FloatingLabel label="Num Bins">
+                <EndpointSelect endpoint={endpoint} fullpath="config/histogram/num_bins_height" />
+              </FloatingLabel>
+            </InputGroup>
+          </Col>
+          <Col>
+            <InputGroup>
+              <FloatingLabel label="Bit Shift">
+                <EndpointInput endpoint={endpoint} fullpath="config/histogram/shift_tailsum" size="sm" />
+              </FloatingLabel>
+              <FloatingLabel label="Num Bins">
+                <EndpointSelect endpoint={endpoint} fullpath="config/histogram/num_bins_tailsum" />
+              </FloatingLabel>
+            </InputGroup>
+          </Col>
+        </Row>
+      </Modal.Body>
+      <Modal.Footer/>
+      <Modal.Body>
+        <Row>
+          <Col>
+            <InputGroup>
+              <FloatingLabel label="Num Cycles">
+                <EndpointInput endpoint={endpoint} fullpath="acq/num_cycles" />
+              </FloatingLabel>
+              <FloatingLabel label="Frame Length (Seconds)">
+                <EndpointInput endpoint={endpoint} fullpath="acq/frame_length" />
+              </FloatingLabel>
+            </InputGroup>
+          </Col>
+        </Row>
+        <Row>
+          <Col className="mt-2">
+            <Row>
+              <Col lg="12" md="6" xs="6">
+                <EndpointCheckbox endpoint={endpoint} fullpath="acq/scope_setup" type="switch" label="Setup Scope" />
+              </Col>
+              <Col>
+                <EndpointCheckbox endpoint={endpoint} fullpath="acq/scope_run" type="switch" label="Run Scope" />
+              </Col>
+            </Row>
+          </Col>
+          <Col md="12" lg="8" className="mt-2">
+            <InputGroup>
+              <FloatingLabel label="Playback File">
+                <EndpointSelect endpoint={endpoint} fullpath={"config/playback/file_name"} />
+              </FloatingLabel>
+              <EndpointButton endpoint={endpoint} fullpath="config/playback/enabled" value={!endpoint.data?.config.playback.enabled}
+                variant={endpoint.data?.config.playback.enabled ? "primary" : "outline-primary"}>
+                {endpoint.data?.config.playback.enabled ? "Playback Enabled" : "Playback Disabled"}
+              </EndpointButton>
+            </InputGroup>
+          </Col>
+        </Row>
+      </Modal.Body>
+      <Modal.Footer>
+        <ButtonGroup size="lg" style={{ width: "100%" }}>
+          <EndpointButton endpoint={endpoint} fullpath="acq/run" value={true} disabled={["running", "counting"].includes(endpoint.data?.acq.state.status ?? "")}>
+            Start
+          </EndpointButton>
+          <EndpointButton endpoint={endpoint} fullpath="acq/run" value={false} disabled={!["running", "counting"].includes(endpoint.data?.acq.state.status ?? "")} variant="danger">
+            Stop
+          </EndpointButton>
+        </ButtonGroup>
+        <ProgressBar label={endpoint.data?.acq.state.status}
+          now={endpoint.data?.acq.state.status == "idle" ? 100 : endpoint.data?.acq.state.current}
+          max={endpoint.data?.acq.state.status == "idle" ? 100 : endpoint.data?.acq.state.total}
+          variant={endpoint.data?.acq.state.status == "idle" ? "secondary" : "primary"}
+          style={{ width: "100%" }} />
+      </Modal.Footer>
+    </Modal>
   )
 
   return (
@@ -159,7 +266,7 @@ const GraphPage = ({ endpoint }: GraphPageProps) => {
           <TitleCard title={Controls}>
             <Row>
               <Col>
-                <Histogram endpoint={endpoint} selected_dataset={selected_dataset}/>
+                <Histogram endpoint={endpoint} selected_dataset={selected_dataset} />
               </Col>
             </Row>
             <Row>
@@ -173,108 +280,7 @@ const GraphPage = ({ endpoint }: GraphPageProps) => {
           </TitleCard>
         </Col>
       </Row>
-      <Row>
-        <Col>
-          <TitleCard title="Histogram Controls">
-            <Row>
-              <Col>
-                <Row>
-                  <Form.Label column>Pulse Height</Form.Label>
-                  <Col xxl={{ order: "last", span: "auto" }} xl={{ order: "first" }}>
-                    <div style={{ paddingTop: "26px" }} />
-                  </Col>
-                </Row>
-              </Col>
-              <Col>
-                <Row>
-                  <Form.Label column>Tail Sum</Form.Label>
-                  <Col xxl={{ order: "last", span: "auto" }} xs={{ order: "first" }} style={{ alignContent: "center" }}><EndpointCheckbox endpoint={endpoint} fullpath="config/histogram/separate_ngp" type="switch" label="Separate NGP" /></Col>
-                </Row>
-              </Col>
-            </Row>
-            <Row>
-              <Col>
-                <InputGroup>
-                  <FloatingLabel label="Bit Shift">
-                    <EndpointInput endpoint={endpoint} fullpath="config/histogram/shift_height" size="sm" />
-                  </FloatingLabel>
-                  <FloatingLabel label="Num Bins">
-                    <EndpointSelect endpoint={endpoint} fullpath="config/histogram/num_bins_height" />
-                  </FloatingLabel>
-                </InputGroup>
-              </Col>
-              <Col>
-                <InputGroup>
-                  <FloatingLabel label="Bit Shift">
-                    <EndpointInput endpoint={endpoint} fullpath="config/histogram/shift_tailsum" size="sm" />
-                  </FloatingLabel>
-                  <FloatingLabel label="Num Bins">
-                    <EndpointSelect endpoint={endpoint} fullpath="config/histogram/num_bins_tailsum" />
-                  </FloatingLabel>
-                </InputGroup>
-              </Col>
-            </Row>
-          </TitleCard>
-        </Col>
-        <Col lg="6" md="12">
-          <TitleCard title="Run Controls">
-            <Row>
-              <Col>
-                <FloatingLabel label="Num Cycles">
-                  <EndpointInput endpoint={endpoint} fullpath="acq/num_cycles" />
-                </FloatingLabel>
-              </Col>
-              <Col>
-                <FloatingLabel label="Frame Length (seconds)">
-                  <EndpointInput endpoint={endpoint} fullpath="acq/frame_length" />
-                </FloatingLabel>
-              </Col>
-
-
-            </Row>
-            <Row>
-              <Col xl="4" className="mt-2">
-                <Row>
-                  <Col>
-                    <EndpointCheckbox endpoint={endpoint} fullpath="acq/scope_setup" type="switch" label="Setup Scope" />
-                  </Col>
-                  <Col>
-                    <EndpointCheckbox endpoint={endpoint} fullpath="acq/scope_run" type="switch" label="Run Scope" />
-                  </Col>
-                </Row>
-              </Col>
-              <Col xl="8" className="mt-2">
-                <InputGroup>
-                  <FloatingLabel label="Playback File">
-                    <EndpointSelect endpoint={endpoint} fullpath={"config/playback/file_name"} />
-                  </FloatingLabel>
-                  <EndpointButton endpoint={endpoint} fullpath="config/playback/enabled" value={!endpoint.data?.config.playback.enabled}
-                    variant={endpoint.data?.config.playback.enabled ? "primary" : "outline-primary"}>
-                    {endpoint.data?.config.playback.enabled ? "Disable Playback" : "Enable Playback"}
-                  </EndpointButton>
-                </InputGroup>
-              </Col>
-            </Row>
-            <Row className="mt-2">
-              <Col>
-                <ButtonGroup size="lg" style={{ width: "100%" }}>
-                  <EndpointButton endpoint={endpoint} fullpath="acq/run" value={true} disabled={endpoint.data?.acq.state.status == "running"}>
-                    Start
-                  </EndpointButton>
-                  <EndpointButton endpoint={endpoint} fullpath="acq/run" value={false} disabled={endpoint.data?.acq.state.status != "running"} variant="danger">
-                    Stop
-                  </EndpointButton>
-                </ButtonGroup>
-              </Col>
-            </Row>
-            <Row className="mt-2">
-              <Col>
-                <ProgressBar label={endpoint.data?.acq.state.status} now={endpoint.data?.acq.state.current} max={endpoint.data?.acq.state.total} />
-              </Col>
-            </Row>
-          </TitleCard >
-        </Col >
-      </Row >
+      {RunModel}
     </Container >
   )
 }

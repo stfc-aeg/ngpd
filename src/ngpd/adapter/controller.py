@@ -126,11 +126,6 @@ class NgpdController(BaseController):
 
         acquisition_tree = {
             **self.device.acquisition.tree,
-            "download": (
-                "Directly Access this Param to download the last saved data file.",
-                None,
-                {"description": "The latest Saved HDF5 File"},
-            ),
             "graph": {
                 "refresh_data": (
                     lambda: self.device.dataHandler.refresh_count,

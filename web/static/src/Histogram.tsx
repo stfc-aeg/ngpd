@@ -26,8 +26,8 @@ const Histogram = ({ endpoint, selected_dataset }: HistogramProps) => {
   const tailsum_shift = endpoint.data?.config.histogram.shift_tailsum ?? 0;
 
   const { numCols, numRows } = {
-    numCols: shape[1],
-    numRows: shape[2]
+    numCols: shape[2],
+    numRows: shape[1]
   }
 
   const scatterData: ComponentProps<typeof Scatter>["data"] = {
@@ -45,16 +45,22 @@ const Histogram = ({ endpoint, selected_dataset }: HistogramProps) => {
         try {
 
           const buf = new Uint32Array(hist);
-          
           const dataset_length = numCols * numRows;
           let reshaped_data: number[][] = [];
-          for(let j = 0; j < buf.length; j+= dataset_length){
+
+          // FOR EACH FULL 2D DATASET
+          //   Set "pointer" at start of dataset
+          //   for each Row
+          //     set "pointer" at start of row
+          //     add row of data to array as "pointer" to pointer + length of row (numCols)
+          //   add array as dataset
+          for (let dataset_p = 0; dataset_p < buf.length; dataset_p += dataset_length) {
             reshaped_data = [];
-            for (let i = j; i < j+dataset_length; i += numRows) {
-              reshaped_data.push(Array.from(buf.slice(i, i + numCols)))
+            for (let row_pointer = dataset_p; row_pointer < dataset_p + dataset_length; row_pointer += numCols) {
+              reshaped_data.push(Array.from(buf.slice(row_pointer, row_pointer + numCols)))
             }
-            datasets[dataset_names[j / dataset_length]] = reshaped_data;
-        }
+            datasets[dataset_names[dataset_p / dataset_length]] = reshaped_data;
+          }
         } catch (err) {
           console.log(err);
         }
